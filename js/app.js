@@ -101,6 +101,60 @@ function enhanceA11y(){
     el.setAttribute('role','button');
   });
 }
+
+/* ---------- CSV export ---------- */
+function csvCell(text){
+  const s=String(text==null?'':text).replace(/\s+/g,' ').trim();
+  return /[",\n;]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+}
+function cellText(td){
+  const c=td.cloneNode(true);
+  c.querySelectorAll('br').forEach(b=>b.replaceWith(' - '));
+  return c.textContent;
+}
+function tableToCSV(table){
+  const rows=[];
+  table.querySelectorAll('thead tr').forEach(tr=>{
+    rows.push([...tr.children].map(th=>csvCell(cellText(th))).join(','));
+  });
+  table.querySelectorAll('tbody tr').forEach(tr=>{
+    rows.push([...tr.children].map(td=>csvCell(cellText(td))).join(','));
+  });
+  return '\ufeff'+rows.join('\r\n');
+}
+function downloadCSV(filename,csv){
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); },0);
+}
+function slugify(s){
+  return (s||'tabela').toLowerCase()
+    .replace(/[ëé]/g,'e').replace(/[çc]/g,'c').replace(/[^a-z0-9]+/g,'-')
+    .replace(/^-+|-+$/g,'').slice(0,48)||'tabela';
+}
+/* add a small CSV button to every card that holds a data table */
+function enhanceExports(){
+  view().querySelectorAll('.card').forEach(card=>{
+    const table=card.querySelector('table.tbl');
+    const head=card.querySelector('.card-head');
+    if(!table||!head||head.querySelector('[data-export-btn]')) return;
+    const title=(head.querySelector('h5')?.textContent||'tabela').trim();
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.className='btn sm ghost export-btn';
+    btn.dataset.exportBtn='1';
+    btn.title='Eksporto CSV';
+    btn.setAttribute('aria-label','Eksporto: '+title);
+    btn.textContent='Export';
+    btn.addEventListener('click',()=>downloadCSV(slugify(title)+'.csv',tableToCSV(table)));
+    let right=head.querySelector('.right');
+    if(!right){ right=document.createElement('div'); right.className='right'; head.appendChild(right); }
+    right.appendChild(btn);
+  });
+}
 function navigate(){
   const hash=location.hash.replace(/^#\//,'')||'dashboard';
   const [route,arg]=hash.split('/');
@@ -111,6 +165,7 @@ function navigate(){
   const R={dashboard:renderDashboard,'risk-map':renderRiskMap,blackspots:renderBlackspots,segments:renderSegments,prediction:renderPrediction,interventions:renderInterventions,reports:renderReports,methodology:renderMethodology,quality:renderQuality,settings:renderSettings,segment:()=>renderSegmentProfile(arg)};
   (R[route]||renderDashboard)();
   enhanceA11y();
+  enhanceExports();
   closeSidebar();
 }
 window.addEventListener('hashchange',navigate);
@@ -685,6 +740,7 @@ function renderReports(){
         </div>
         <div class="rep-actions">
           <button type="button" class="btn" id="repReset">Rivendos filtrat</button>
+          <button type="button" class="btn" id="repCsv">Eksporto CSV</button>
           <button type="button" class="btn navy" onclick="window.print()">Printo / PDF</button>
         </div>
       </div>
@@ -742,7 +798,25 @@ function renderReports(){
     syncReportUI(); drawReport();
   });
 
+  const repCsvBtn=document.getElementById('repCsv');
+  if(repCsvBtn) repCsvBtn.addEventListener('click',exportReportCSV);
+
   syncReportUI(); drawReport();
+}
+
+function exportReportCSV(){
+  const out=document.getElementById('reportOut');
+  const tables=out?out.querySelectorAll('table.tbl'):[];
+  if(!tables.length){ return; }
+  const blocks=[...tables].map(t=>{
+    const sec=t.closest('.rs-sec');
+    const h=sec?sec.querySelector('h4'):null;
+    const title=h?h.textContent.replace(/\s+/g,' ').trim():'';
+    const body=[...t.querySelectorAll('thead tr,tbody tr')].map(tr=>
+      [...tr.children].map(c=>csvCell(cellText(c))).join(',')).join('\r\n');
+    return (title?csvCell(title)+'\r\n':'')+body;
+  });
+  downloadCSV('raport-'+slugify(reportSel.type)+'.csv','\ufeff'+blocks.join('\r\n\r\n'));
 }
 
 function syncReportUI(){

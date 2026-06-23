@@ -1741,6 +1741,9 @@ table.tbl,table.tbl tbody td{font-size:14px}
 .page-head h3{font-size:24px}
 .crumb h2{font-size:18px}
 .kpi-label{font-size:12.5px}
+/* CSV export button (auto-added to data cards) */
+.export-btn{font-family:var(--mono);font-size:11px;letter-spacing:.04em;padding:5px 10px;color:var(--ink-3)}
+.export-btn:hover{color:var(--accent);border-color:#cbd5e1}
 .cell-sub,.hint,.note-inline,.meta,.muted,.kpi-note{font-size:13px}
 .badge,.trend-chip,.data-tag{font-size:11.5px}
 .nav-group-title{font-size:11px}
