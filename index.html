@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="sq">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Platforma Kombëtare për Menaxhimin Proaktiv të Riskut Rrugor</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+</head>
+<body>
+<a href="#view" class="skip-link">Kalo te përmbajtja</a>
+<div id="app">
+  <aside class="sidebar" id="sidebar" role="navigation" aria-label="Navigimi kryesor">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4" stroke="#93c5fd" stroke-width="2"/></svg>
+      </div>
+      <div class="brand-txt">
+        <h1>Siguria Rrugore</h1>
+        <p>Platformë Kombëtare</p>
+      </div>
+    </div>
+    <nav class="nav" id="nav"></nav>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="btn ghost menu-toggle" id="menuToggle" aria-label="Menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+      <div class="crumb">
+        <h2 id="pageTitle">Paneli Analitik</h2>
+      </div>
+      <div class="topbar-spacer"></div>
+      <div class="topbar-stat"><span class="v red" id="tbFatal">0</span><span class="l">Fatalitete 2025</span></div>
+      <div class="topbar-stat"><span class="v" id="tbAcc">0</span><span class="l">Aksidente 2025</span></div>
+      <div class="topbar-stat"><span class="v" id="tbRate">0</span><span class="l">Shkalla e fatalitetit</span></div>
+    </header>
+    <main class="view" id="view" tabindex="-1" aria-label="Përmbajtja kryesore"></main>
+  </div>
+  <footer class="app-foot">2026 innovation4albania</footer>
+</div>
+<div class="scrim" id="scrim"></div>
+
+<script src="js/util.js"></script>
+<script src="js/official.js"></script>
+<script src="js/data.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/interventions.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
