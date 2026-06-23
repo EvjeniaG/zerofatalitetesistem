@@ -78,8 +78,9 @@ function buildNav(){
   nav.innerHTML=NAV.map(g=>`
     <div class="nav-group">
       <div class="nav-group-title">${g.group}</div>
-      ${g.items.map(it=>`<a class="nav-item" data-route="${it.id}" href="#/${it.id}">
-        <span>${it.label}</span>
+      ${g.items.map(it=>`<a class="nav-item" data-route="${it.id}" href="#/${it.id}" title="${it.label}">
+        <span class="nav-ico">${icon(it.ico)}</span>
+        <span class="nav-label">${it.label}</span>
         ${it.badge?`<span class="nav-badge ${it.warn?'warn':''}">${it.badge()}</span>`:''}
       </a>`).join('')}
     </div>`).join('');
@@ -1178,6 +1179,21 @@ function fitAlbania(){ if(_map) _map.fitBounds([[39.6,19.2],[42.7,21.1]],{paddin
 function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('scrim').classList.remove('on'); }
 document.getElementById('menuToggle').addEventListener('click',()=>{document.getElementById('sidebar').classList.toggle('open');document.getElementById('scrim').classList.toggle('on');});
 document.getElementById('scrim').addEventListener('click',closeSidebar);
+
+/* sidebar collapse (desktop) — condensed icon rail, persisted */
+function applyCollapse(on){
+  document.getElementById('app').classList.toggle('collapsed',on);
+  const btn=document.getElementById('collapseToggle');
+  if(btn) btn.setAttribute('aria-pressed',on?'true':'false');
+  try{ localStorage.setItem('sb-collapsed',on?'1':'0'); }catch(e){}
+  setTimeout(()=>{ if(_map&&_map.invalidateSize) _map.invalidateSize(); },260);
+}
+(function initCollapse(){
+  const btn=document.getElementById('collapseToggle'); if(!btn) return;
+  let saved='0'; try{ saved=localStorage.getItem('sb-collapsed')||'0'; }catch(e){}
+  applyCollapse(saved==='1');
+  btn.addEventListener('click',()=>applyCollapse(!document.getElementById('app').classList.contains('collapsed')));
+})();
 
 /* interactive chart tooltips (hover + click) */
 function initChartTooltips(){
