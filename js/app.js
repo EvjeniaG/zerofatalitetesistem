@@ -2,7 +2,7 @@
    app.js - SPA shell: navigation, hash router, module views.
    ============================================================= */
 
-const APP_BUILD='20260629-ui12';
+const APP_BUILD='20260629-ui13';
 const NAV=[
   {group:'Analizë', items:[
     {id:'dashboard',  label:'Paneli Analitik',      ico:'grid'},

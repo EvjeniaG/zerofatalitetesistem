@@ -1808,13 +1808,13 @@ table.tbl,table.tbl tbody td{font-size:14px}
 :root{
   --font:'Source Sans 3',system-ui,-apple-system,'Segoe UI',sans-serif;
   --mono:'IBM Plex Mono','SF Mono',ui-monospace,monospace;
-  --type-display:28px;
-  --type-title:23px;
-  --type-heading:17px;
-  --type-body:16.5px;
-  --type-small:14.5px;
-  --type-meta:13px;
-  --type-caption:12px;
+  --type-display:30px;
+  --type-title:24px;
+  --type-heading:18px;
+  --type-body:17.5px;
+  --type-small:15.5px;
+  --type-meta:14px;
+  --type-caption:13px;
   --lh-body:1.58;
   --lh-tight:1.28;
 }
@@ -2217,3 +2217,92 @@ table.seg-tbl tbody tr.seg-tr-mon.clickable:hover{background:linear-gradient(90d
 .callout.red h6{color:var(--red)}
 .m-list.numbered{list-style:decimal;padding-left:22px}
 .obs-list.compact li{padding:6px 0;font-size:13px}
+
+/* =============================================================
+   v16 — UNIFORM TYPE: e njëjta lexueshmëri në çdo faqe
+   (mbishkruan madhësitë e vjetra të shpërndara në file)
+   ============================================================= */
+
+/* Bazë */
+body,button,input,select,textarea{font-size:var(--type-body)}
+
+/* Tituj & strukturë */
+.page-head h3{font-size:var(--type-display)}
+.page-head p,.lead,.prose,p{font-size:var(--type-small);line-height:var(--lh-body)}
+.crumb h2,.topbar .crumb h2{font-size:var(--type-title)}
+.sec-head h4,.section-divider h4{font-size:var(--type-heading)}
+.card-head h5,.report-sheet .rs-sec h4{font-size:var(--type-heading)}
+.card-head .hint,.cell-sub,.hint,.kpi-note,.meta,.muted,.org,.note-inline,.cell-meta,.cell-id{font-size:var(--type-meta)}
+.section-divider span{font-size:var(--type-meta)}
+
+/* KPI */
+.kpi-label,.kpi-sub,.delta{font-size:var(--type-caption)}
+.kpi-val{font-size:34px}
+.kpi-val .u{font-size:var(--type-meta)}
+
+/* Nav & sidebar */
+.nav-item{font-size:var(--type-small)}
+.nav-group-title,.brand-txt p,.sidebar-foot,.app-foot{font-size:var(--type-caption)}
+.brand-txt h1{font-size:var(--type-small)}
+.nav-badge{font-size:var(--type-caption)}
+
+/* Tabela — të gjitha faqet */
+table.tbl,table.tbl tbody td,table.seg-tbl,table.seg-tbl tbody td{font-size:var(--type-small)}
+table.tbl thead th,table.seg-tbl thead th{font-size:var(--type-caption)}
+table.tbl td .strong,table.tbl .strong,table.seg-tbl .strong{font-size:var(--type-small);font-weight:700}
+table.seg-tbl .col-seg .strong{font-size:var(--type-small)}
+table.seg-tbl .col-seg .cell-sub,table.seg-tbl tbody td .cell-sub{font-size:var(--type-meta)}
+
+/* Kontrolle */
+.btn,.inp,select.inp,.seg-filter-bar .inp,.seg-filter-bar select.inp{font-size:var(--type-small)}
+.btn.sm,.export-btn{font-size:var(--type-meta)}
+
+/* Chip & badge */
+.badge,.trend-chip,.data-tag,.risk-chip,.risk-pill,.risk-pill-sm,.seg-status,.rank{font-size:var(--type-caption)}
+.topbar-stat .l,.ph-score .l{font-size:var(--type-caption)}
+
+/* Kartat e përmbajtjes */
+.cause-card h6,.action-card h6,.callout h6{font-size:var(--type-small)}
+.cause-card p,.action-card p,.callout p,.obs-list li,.m-list li,.m-why{font-size:var(--type-small)}
+.action-metrics .am{font-size:var(--type-caption)}
+.action-metrics .am b,.driver-row .dr-val,.scorebar-row .sb-num{font-size:var(--type-small)}
+.driver-row .dr-name,.scorebar-row .sb-name,.legend-name,.lg-name{font-size:var(--type-small)}
+.empty p,.param-note{font-size:var(--type-small)}
+.qmeter .ql{font-size:var(--type-caption)}
+
+/* Profil segmenti */
+.profile-hero h3{font-size:var(--type-display)}
+.profile-hero .ph-meta,.profile-hero .ph-tag,.profile-hero .ph-chip,.profile-hero .ph-chip-k{font-size:var(--type-meta)}
+
+/* Udhëzues statusi (segmentet) */
+.status-guide h5{font-size:var(--type-heading)}
+.status-guide .sg-level,.status-guide .sg-rules li{font-size:var(--type-small)}
+.status-guide .sg-count{font-size:36px}
+.status-guide .sg-tag{font-size:var(--type-caption)}
+
+/* Raporte */
+.report-sheet .rs-head h3{font-size:var(--type-display)}
+.report-sheet p.lead,.rep-type-tab .t-title,.rep-summary .rs-value{font-size:var(--type-small)}
+.rep-type-tab .t-sub,.report-sheet .rs-head .meta,.rep-summary .rs-meta{font-size:var(--type-meta)}
+.rep-summary .rs-label,.report-sheet .rs-head .org{font-size:var(--type-caption)}
+
+/* Harta */
+.map-legend,.layer-row,.map-title{font-size:var(--type-small)}
+.map-legend h6,.map-layers h6{font-size:var(--type-caption)}
+.leaflet-tooltip.map-tip{font-size:var(--type-small)}
+.map-legend .lg-label{font-size:var(--type-small)}
+
+/* Topbar */
+.topbar-stat .v{font-size:var(--type-small)}
+.topbar .crumb .sub{font-size:var(--type-meta)}
+
+/* Metodologji & ndarës */
+.section-divider h4{font-size:var(--type-caption);letter-spacing:.07em}
+.m-formula{font-size:var(--type-meta)}
+.m-inline,.m-where li code{font-size:var(--type-meta)}
+
+@media(max-width:760px){
+  body,button,input,select,textarea{font-size:16.5px}
+  .page-head h3{font-size:24px}
+  .kpi-val{font-size:30px}
+}
