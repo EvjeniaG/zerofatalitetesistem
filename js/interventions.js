@@ -49,7 +49,7 @@ function interventionsFor(seg, limit){
     const cat=INTERVENTION_CATALOG[c.key]||[];
     const tmpl=cat[0]; if(!tmpl) return;
     // scale impact by how much this cause contributes & segment risk
-    const scale=(c.contribution/100)*(0.6+seg.m.risk/200);
+    const scale=(c.contribution/100)*(0.6+seg.nwa.integrated/10);
     const rr=Math.round(tmpl.rr*(0.7+scale));
     const fr=Math.round(tmpl.fr*(0.7+scale));
     out.push({
@@ -66,7 +66,7 @@ function interventionsFor(seg, limit){
 
 /* National intervention portfolio = top measures across worst segments */
 function interventionPortfolio(n){
-  const worst=SEGS.filter(s=>s.m.risk>=55).sort((a,b)=>b.priority-a.priority).slice(0,40);
+  const worst=SEGS.filter(s=>s.nwa.integrated>=4||s.isBlackSpot).sort((a,b)=>b.priority-a.priority).slice(0,40);
   const all=[];
   worst.forEach(s=>{ interventionsFor(s,2).forEach(iv=>all.push({...iv,seg:s})); });
   all.sort((a,b)=>b.priorityVal-a.priorityVal);

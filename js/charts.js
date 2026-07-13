@@ -10,7 +10,7 @@ const chartId=p=>`${p}${++_chartUid}`;
 const tipAttr=t=>`data-tip="${String(t).replace(/"/g,'&quot;')}"`;
 
 function svgWrap(w,h,inner,extra){
-  return `<div class="chart-box"><svg role="img" aria-label="Grafik i të dhënave — vlerat shfaqen me kalim/klik mbi pikat" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet" width="100%" height="${h}" style="display:block;max-width:100%;${extra||''}">${inner}</svg></div>`;
+  return `<div class="chart-box"><svg role="img" aria-label="Grafik i të dhënave - vlerat shfaqen me kalim/klik mbi pikat" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet" width="100%" height="${h}" style="display:block;max-width:100%;${extra||''}">${inner}</svg></div>`;
 }
 
 /* Multi-series line chart with axis labels, soft gridlines & gradient area */

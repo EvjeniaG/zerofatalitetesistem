@@ -41,6 +41,9 @@ const fmt = {
 };
 function clamp(x,a,b){ return Math.max(a,Math.min(b,x)); }
 function round1(x){ return Math.round(x*10)/10; }
+function round2(x){ return Math.round(x*100)/100; }
+function round3(x){ return Math.round(x*1000)/1000; }
+function round5(x){ return Math.round(x*100000)/100000; }
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function slug(s){ return String(s).toLowerCase().replace(/[^a-z0-9]+/g,'-'); }
 function haversine(a,b,c,d){
