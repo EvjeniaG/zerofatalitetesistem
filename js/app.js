@@ -2,7 +2,7 @@
    app.js - SPA shell: navigation, hash router, module views.
    ============================================================= */
 
-const APP_BUILD='20260629-ui13';
+const APP_BUILD='20260629-ui18';
 const NAV=[
   {group:'Analizë', items:[
     {id:'dashboard',  label:'Paneli Analitik',      ico:'grid'},
@@ -459,16 +459,14 @@ function renderSegTable(){
   if(hint) hint.textContent=`${rows.length} segmente`;
   if(!wrap) return;
   wrap.innerHTML=rows.length?`<table class="tbl seg-tbl"><thead><tr>
-    <th class="col-rank">#</th><th>Segment</th><th>Statusi</th><th>Bashkia / Qark</th><th>Tipi</th><th>Rruga</th><th>Historiku</th><th class="col-risk">Risku</th><th class="num">Aks.</th><th class="num">Fat.</th><th>Trendi</th>
+    <th class="col-rank">#</th><th>Segment</th><th>Statusi</th><th class="col-causes">Pse ndodhën</th><th>Bashkia / Qark</th><th class="col-risk">Risku</th><th class="num">Aks.</th><th class="num">Fat.</th><th>Trendi</th>
   </tr></thead><tbody>
   ${rows.map((s,i)=>`<tr class="clickable seg-tr-${segStatusTier(s)}" onclick="location.hash='#/segment/${s.id}'" title="Hap profilin e segmentit">
     <td class="col-rank"><span class="rank ${i<3?'t'+(i+1):''}">${i+1}</span></td>
     <td class="col-seg"><span class="strong">${escapeHtml(shortRoad(s))}</span><span class="cell-sub">${s.id} · km ${s.kmFrom}–${s.kmTo}</span></td>
     <td class="col-status">${segStatusBadge(s)}</td>
+    <td class="col-causes">${segCausesCell(s)}</td>
     <td>${s.municipality}<span class="cell-sub">${s.qark}</span></td>
-    <td><span class="cell-meta">${s.nwa.typeLabel}</span></td>
-    <td>${nwaSubBadge(s.nwa.proactive.cls,'pro')}</td>
-    <td>${nwaSubBadge(s.nwa.reactive.cls,'rea')}</td>
     <td class="col-risk">${nwaCell(s.nwa)}</td>
     <td class="num"><b>${s.m.n}</b></td>
     <td class="num num-fatal"><b>${s.m.fatalities||'-'}</b></td>
@@ -481,6 +479,27 @@ function renderSegTable(){
 /* ================================================================
    5. SEGMENT PROFILE (full report page)
    ================================================================ */
+function segCausesCell(s){
+  if(!s.causes?.length) return '<span class="cell-meta">—</span>';
+  const top=s.causes.slice(0,2);
+  const more=s.causes.length-top.length;
+  return `<div class="seg-cause-list">${top.map(c=>`<span class="seg-cause-chip" title="${escapeHtml(c.summary)}">${c.shortLabel} <b>${c.count}</b></span>`).join('')}${more?`<span class="seg-cause-more">+${more}</span>`:''}</div>`;
+}
+function renderCausesTable(s){
+  if(!s.causes.length) return '<p class="prose muted">Pa aksidente në historik.</p>';
+  return `<table class="tbl cause-tbl"><thead><tr>
+    <th>Shkaku</th><th class="num">Herë</th><th class="num">Pjesa</th><th class="num">Vdekje</th><th>Si ndodhi</th>
+  </tr></thead><tbody>${s.causes.map(c=>`<tr>
+    <td class="cause-name" title="${escapeHtml(c.desc||'')}">${c.label}${c.desc?`<span class="cause-hint" title="${escapeHtml(c.desc)}">?</span>`:''}</td>
+    <td class="num"><b>${c.count}</b></td>
+    <td class="num">${c.contribution}%</td>
+    <td class="num num-fatal">${c.fatalCount||'—'}</td>
+    <td class="cause-hist">
+      <div class="cause-tags">${c.tags.map(t=>`<span class="cause-tag">${escapeHtml(t)}</span>`).join('')}</div>
+      ${c.example?`<span class="cause-ex">${escapeHtml(c.example)}</span>`:''}
+    </td>
+  </tr>`).join('')}</tbody></table>`;
+}
 function renderSegmentProfile(id){
   const s=SEGS.find(x=>x.id===id);
   if(!s){ view().innerHTML=`<div class="view-pad"><div class="empty"><p>Segmenti nuk u gjet.</p><a class="btn mt-16" href="#/segments">Kthehu te segmentet</a></div></div>`; return; }
@@ -558,6 +577,11 @@ function renderSegmentProfile(id){
           ${s.isBlackSpot?`<ul class="obs-list">${bsReasons.map(r=>`<li>${r}</li>`).join('')}</ul>`:`<p class="prose">${status.label}.</p>`}
         </div>
       </div>
+    </div>
+
+    <div class="card mt-20">
+      <div class="card-head"><h5>Pse ndodhën aksidentet</h5><span class="hint">${segmentRiskNarrative(s)}</span></div>
+      <div class="card-pad">${renderCausesTable(s)}</div>
     </div>
 
     <div class="grid g2 mt-20 profile-side-pair" style="grid-template-columns:1fr 1.1fr">

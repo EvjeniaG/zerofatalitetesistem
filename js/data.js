@@ -67,20 +67,20 @@ const VOCAB = {
   weather:['Kthjellët','Me re','Shi','Mjegull','Erë e fortë','Akull/Borë'],
   lighting:['Dritë dite','Muzg','Natë me ndriçim','Natë pa ndriçim'],
   surface:['I thatë','I lagësht','Me baltë/zhavorr','Akull/Borë'],
-  driver:['Shpejtësi e tepërt','Mosrespektim përparësie','Manovër e gabuar','Lodhje','Alkool/Substanca','Përdorim telefoni','Distancë e pamjaftueshme','Pa faktor drejtuesi'],
-  infra:['Ndriçim i munguar','Sinjalistikë e dëmtuar','Kthesë e rrezikshme','Nyje e pakontrolluar','Sipërfaqe e dëmtuar','Mungesë trotuari/kalimi','Pa faktor infrastrukture'],
+  driver:['Tejkalim shpejtësie','Nuk dha përparësi','Manovër e gabuar','Lodhje','Alkool ose drogë','Telefon gjatë vozitjes','Distancë shumë e shkurtër','Pa gabim të drejtuesit'],
+  infra:['Pa dritë publike','Shenja të dëmtuara','Kthesë e rrezikshme','Kryqëzim i pasigurt','Rrugë e dëmtuar','Mungon trotuar/kalim','Pa problem infrastrukture'],
   vehicle:['Defekt frenash','Goma të konsumuara','Drita jofunksionale','Mbingarkesë','Pa faktor automjeti'],
 };
 // Root-cause taxonomy used by segment profiles & root-cause engine
 const CAUSES = [
-  {key:'speed',     label:'Shpejtësi e tepërt',          ico:'speed'},
-  {key:'pedestrian',label:'Ekspozim i këmbësorëve',      ico:'walk'},
-  {key:'lighting',  label:'Ndriçim i pamjaftueshëm',     ico:'sun'},
-  {key:'curve',     label:'Gjeometri / kthesa të forta', ico:'road'},
-  {key:'junction',  label:'Nyje e pakontrolluar',        ico:'pin'},
-  {key:'surface',   label:'Gjendje e dobët e sipërfaqes',ico:'drop'},
-  {key:'traffic',   label:'Volum i lartë trafiku',       ico:'car'},
-  {key:'response',  label:'Kohë reagimi e zgjatur',      ico:'clock'},
+  {key:'speed',     label:'Tejkalim shpejtësie',         short:'Shpejtësi',  desc:'Shoferi ka vozitur më shpejt se lejohet — humb kontrollin ose përplaset më fort.', ico:'speed'},
+  {key:'pedestrian',label:'Rrezik për këmbësorë',        short:'Këmbësorë',  desc:'Këmbësorët goditen ose janë në rrezik — mungon kalim i sigurt ose vozitet shumë shpejt.', ico:'walk'},
+  {key:'lighting',  label:'Rrugë e errët',               short:'Errësirë',   desc:'Aksidenti ndodhi natën ose në muzg — rruga nuk ka dritë të mjaftueshme.', ico:'sun'},
+  {key:'curve',     label:'Kthesa e rrezikshme',         short:'Kthesa',     desc:'Makina del nga rruga ose përmbyset në një kthesë të mprehtë.', ico:'road'},
+  {key:'junction',  label:'Kryqëzim i pasigurt',         short:'Kryqëzim',   desc:'Përplasje në kryqëzim ku mungon semafori, rrethrrotullimi ose rregulla të qarta të përparësisë.', ico:'pin'},
+  {key:'surface',   label:'Rrugë e keqe',                short:'Rrugë',      desc:'Rruga ishte e lagësht, me akull, gropa ose asfalt i dëmtuar — makina rrëshqet lehtë.', ico:'drop'},
+  {key:'traffic',   label:'Shumë trafik',                short:'Trafik',     desc:'Shumë makina në të njëjtën rrugë — përplasje nga prapa, zinxhir ose manovra të vështira.', ico:'car'},
+  {key:'response',  label:'Ndihma vonon',                short:'Ambulanca',  desc:'Ambulanca ose policia vonojnë të mbërrijnë — pasojat e aksidentit bëhen më të rënda.', ico:'clock'},
 ];
 
 /* ---- geometry helpers ---- */
@@ -206,15 +206,15 @@ function buildDataset(){
           dominant==='curve'?weighted([['Dalje nga rruga',50],['Përmbysje',25],['Përplasje ballore',25]]):
           s.roadType==='Autostradë'?weighted([['Përplasje nga prapa',40],['Zinxhir automjetesh',20],['Dalje nga rruga',25],['Përplasje anësore',15]]):
           weighted([['Përplasje anësore',32],['Përplasje ballore',22],['Përplasje nga prapa',22],['Dalje nga rruga',14],['Goditje pengese',10]]);
-        const driver = dominant==='speed'?'Shpejtësi e tepërt':
-          dominant==='junction'?'Mosrespektim përparësie':
-          weighted([['Shpejtësi e tepërt',20],['Mosrespektim përparësie',16],['Manovër e gabuar',16],['Lodhje',10],['Alkool/Substanca',12],['Përdorim telefoni',10],['Distancë e pamjaftueshme',10],['Pa faktor drejtuesi',6]]);
-        const infra = dominant==='lighting'?'Ndriçim i munguar':
+        const driver = dominant==='speed'?'Tejkalim shpejtësie':
+          dominant==='junction'?'Nuk dha përparësi':
+          weighted([['Tejkalim shpejtësie',20],['Nuk dha përparësi',16],['Manovër e gabuar',16],['Lodhje',10],['Alkool ose drogë',12],['Telefon gjatë vozitjes',10],['Distancë shumë e shkurtër',10],['Pa gabim të drejtuesit',6]]);
+        const infra = dominant==='lighting'?'Pa dritë publike':
           dominant==='curve'?'Kthesë e rrezikshme':
-          dominant==='junction'?'Nyje e pakontrolluar':
-          dominant==='surface'?'Sipërfaqe e dëmtuar':
-          dominant==='pedestrian'?'Mungesë trotuari/kalimi':
-          weighted([['Pa faktor infrastrukture',45],['Sinjalistikë e dëmtuar',16],['Ndriçim i munguar',12],['Kthesë e rrezikshme',10],['Nyje e pakontrolluar',9],['Sipërfaqe e dëmtuar',8]]);
+          dominant==='junction'?'Kryqëzim i pasigurt':
+          dominant==='surface'?'Rrugë e dëmtuar':
+          dominant==='pedestrian'?'Mungon trotuar/kalim':
+          weighted([['Pa problem infrastrukture',45],['Shenja të dëmtuara',16],['Pa dritë publike',12],['Kthesë e rrezikshme',10],['Kryqëzim i pasigurt',9],['Rrugë e dëmtuar',8]]);
         const vehicle = weighted([['Pa faktor automjeti',60],['Goma të konsumuara',12],['Defekt frenash',10],['Drita jofunksionale',9],['Mbingarkesë',9]]);
         // response time minutes (worse for remote / response-cause segments)
         const remote = 1 - clamp(s.municipality==='Tiranë'?0.95:MUNI_BY_NAME[s.municipality].w/16,0.2,1);

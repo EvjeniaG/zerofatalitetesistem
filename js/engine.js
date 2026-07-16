@@ -53,34 +53,181 @@ function computeSegmentStats(seg) {
   };
 }
 
-/* Shkaqe rrënjësore - vetëm për rekomandime ndërhyrjeje (jo për klasifikim NWA) */
+/* Shkaqe nga historiku i aksidenteve — çdo shkak veç e veç */
+function tallyField(acc, field) {
+  const t = {};
+  acc.forEach(a => {
+    const v = a[field];
+    if (v) t[v] = (t[v] || 0) + 1;
+  });
+  return t;
+}
+function topEntry(tally) {
+  return Object.entries(tally).sort((a, b) => b[1] - a[1])[0] || null;
+}
 function rootCauses(seg) {
   const acc = seg.accidents;
-  const n = acc.length || 1;
+  const n = acc.length;
+  if (!n) return [];
   const tally = {};
   CAUSES.forEach(c => { tally[c.key] = 0; });
   acc.forEach(a => { tally[a.dominantCause] += 1; });
-  const out = CAUSES.map(c => {
-    const obs = tally[c.key] / n;
-    const prof = seg.causeWeights[c.key];
-    const score = obs * 0.7 + (prof / 2.2) * 0.3;
-    return { ...c, count: tally[c.key], share: obs, score };
-  }).sort((a, b) => b.score - a.score);
-  const tot = out.reduce((s, c) => s + c.score, 0) || 1;
-  out.forEach(c => { c.contribution = Math.round(c.score / tot * 100); });
+  const out = CAUSES
+    .map(c => ({ ...c, count: tally[c.key], share: tally[c.key] / n }))
+    .filter(c => c.count > 0)
+    .sort((a, b) => b.count - a.count);
+  const tot = out.reduce((s, c) => s + c.count, 0) || 1;
+  out.forEach(c => { c.contribution = Math.round(c.count / tot * 100); });
   return out;
 }
 
-const CAUSE_EXPLAIN = {
-  speed: 'Shpejtësia mesatare e vlerësuar tejkalon ndjeshëm limitin, duke rritur energjinë e përplasjes dhe distancën e frenimit.',
-  pedestrian: 'Përqendrim i lartë i goditjeve të këmbësorëve tregon konflikt këmbësorë-automjete dhe mungesë kalimesh të sigurta.',
-  lighting: 'Pjesë e madhe e aksidenteve ndodhin natën pa ndriçim, çka ul dukshmërinë dhe kohën e reagimit.',
-  curve: 'Gjeometria e segmentit (kthesa/dalje nga rruga) gjeneron humbje kontrolli dhe përmbysje.',
-  junction: 'Nyjet e pakontrolluara prodhojnë konflikte përparësie dhe përplasje anësore.',
-  surface: 'Gjendja e sipërfaqes (e lagësht/baltë/akull) ul fërkimin dhe rrit distancën e ndalimit.',
-  traffic: 'Volumi i lartë i trafikut rrit ekspozimin dhe përplasjet nga prapa / zinxhir.',
-  response: 'Koha e zgjatur e reagimit të emergjencës rrit ashpërsinë e pasojave të aksidenteve.',
+const PARAM_CAUSE_LINK = {
+  curvature: ['curve'],
+  pedConflict: ['pedestrian'],
+  junctions: ['junction'],
+  interchanges: ['junction'],
+  propertyAccess: ['junction', 'traffic'],
+  signsSignals: ['lighting', 'junction'],
+  trafficOps: ['lighting', 'traffic'],
+  roadside: ['curve', 'surface'],
+  shoulder: ['surface'],
+  laneWidth: ['traffic', 'speed'],
+  passingLanes: ['traffic'],
 };
+
+function accidentEvidence(seg) {
+  const acc = seg.accidents;
+  const n = acc.length || 1;
+  const byCause = {};
+  CAUSES.forEach(c => { byCause[c.key] = acc.filter(a => a.dominantCause === c.key); });
+  const night = acc.filter(a => (a.lighting || '').includes('Natë'));
+  const noLight = acc.filter(a => a.lighting === 'Natë pa ndriçim');
+  const overSpeed = acc.filter(a => a.estimated_speed > a.speed_limit * 1.08);
+  const wet = acc.filter(a => ['I lagësht', 'Akull/Borë', 'Me baltë/zhavorr'].includes(a.road_condition));
+  const ped = acc.filter(a => a.pedestrians > 0 || (a.collision_type || '').includes('këmbësor'));
+  const fatal = acc.filter(a => a.fatalities > 0);
+  const avgSpeed = Math.round(acc.reduce((s, a) => s + a.estimated_speed, 0) / n);
+  const avgResp = Math.round(acc.reduce((s, a) => s + a.response_time, 0) / n);
+  return {
+    n, night, noLight, overSpeed, wet, ped, fatal,
+    nightPct: Math.round(night.length / n * 100),
+    noLightPct: Math.round(noLight.length / n * 100),
+    overSpeedPct: Math.round(overSpeed.length / n * 100),
+    wetPct: Math.round(wet.length / n * 100),
+    pedPct: Math.round(ped.length / n * 100),
+    avgSpeed, avgResp, byCause,
+  };
+}
+
+function weakParamsForCause(seg, causeKey) {
+  const rfs = seg.nwa?.proactive?.rfs || {};
+  return Object.entries(PARAM_CAUSE_LINK)
+    .filter(([pk, keys]) => keys.includes(causeKey) && rfs[pk] && rfs[pk].quality < 72)
+    .map(([pk]) => rfs[pk])
+    .sort((a, b) => a.quality - b.quality);
+}
+
+const CAUSE_SHORT = {
+  speed: 'Shpejtësi',
+  pedestrian: 'Këmbësorë',
+  lighting: 'Errësirë',
+  curve: 'Kthesa',
+  junction: 'Kryqëzim',
+  surface: 'Rrugë',
+  traffic: 'Trafik',
+  response: 'Ambulanca',
+};
+
+const SKIP_TAGS = new Set(['Pa problem infrastrukture', 'Pa gabim të drejtuesit', 'Pa faktor automjeti']);
+
+function humanizeTag(text) {
+  if (!text || SKIP_TAGS.has(text)) return '';
+  const map = {
+    'Shpejtësi e tepërt': 'Tejkalim shpejtësisë',
+    'Tejkalim shpejtësie': 'Tejkalim shpejtësisë',
+    'Mosrespektim përparësie': 'Nuk dha përparësi',
+    'Nuk dha përparësi': 'Nuk dha përparësi',
+    'Nyje e pakontrolluar': 'Kryqëzim pa kontroll',
+    'Kryqëzim i pasigurt': 'Kryqëzim pa kontroll',
+    'Ndriçim i munguar': 'Pa dritë publike',
+    'Pa dritë publike': 'Pa dritë publike',
+    'Natë pa ndriçim': 'Natë pa dritë',
+    'Sipërfaqe e dëmtuar': 'Rrugë e dëmtuar',
+    'Rrugë e dëmtuar': 'Rrugë e dëmtuar',
+    'Mungesë trotuari/kalimi': 'Mungon kalim këmbësorësh',
+    'Mungon trotuar/kalim': 'Mungon kalim këmbësorësh',
+  };
+  return map[text] || text;
+}
+
+function pushTag(tags, text) {
+  const t = humanizeTag(text);
+  if (t && !tags.includes(t)) tags.push(t);
+}
+
+function causeExamples(acc, limit = 1) {
+  return [...acc].sort((a, b) => b.date - a.date).slice(0, limit).map(a => ({
+    date: fmt.dateShort(a.date),
+    collision: a.collision_type,
+  }));
+}
+
+function causeSummary(seg, cause, acc) {
+  const tags = [];
+  const coll = topEntry(tallyField(acc, 'collision_type'));
+  const driver = topEntry(tallyField(acc, 'driver_factor'));
+  const infra = topEntry(tallyField(acc, 'infrastructure_factor'));
+  const light = topEntry(tallyField(acc, 'lighting'));
+
+  if (cause.key === 'speed') {
+    if (driver) pushTag(tags, driver[0]);
+    const over = acc.filter(a => a.estimated_speed > a.speed_limit * 1.08).length;
+    if (over) pushTag(tags, `Mbi ${seg.speedLimit} km/h`);
+  } else if (cause.key === 'pedestrian') {
+    if (coll) pushTag(tags, coll[0]);
+  } else if (cause.key === 'lighting') {
+    const dark = acc.filter(a => a.lighting === 'Natë pa ndriçim').length;
+    if (dark) pushTag(tags, `${dark} natë pa dritë`);
+    else if (light) pushTag(tags, light[0]);
+  } else if (cause.key === 'curve' || cause.key === 'junction') {
+    if (coll) pushTag(tags, coll[0]);
+    if (cause.key === 'junction' && driver) pushTag(tags, driver[0]);
+  } else if (cause.key === 'surface') {
+    const wet = acc.filter(a => ['I lagësht', 'Akull/Borë', 'Me baltë/zhavorr'].includes(a.road_condition)).length;
+    if (wet) pushTag(tags, `${wet} me lagësht/akull`);
+    else if (infra) pushTag(tags, infra[0]);
+  } else if (cause.key === 'traffic') {
+    const vol = seg.aadt >= 1000 ? `~${Math.round(seg.aadt / 1000)} mijë makina/ditë` : `${fmt.n(seg.aadt)} makina/ditë`;
+    pushTag(tags, vol);
+  } else if (cause.key === 'response') {
+    const avg = Math.round(acc.reduce((s, a) => s + a.response_time, 0) / acc.length);
+    pushTag(tags, `Ambulanca ~${avg} min`);
+  }
+
+  if (coll && tags.length < 3) pushTag(tags, coll[0]);
+
+  const ex = causeExamples(acc, 1)[0];
+  const example = ex ? `Shembull: ${ex.date} · ${ex.collision}` : '';
+  const clean = tags.filter((t, i, a) => t !== cause.label && a.indexOf(t) === i);
+  const summary = clean.slice(0, 3).join(' · ') || cause.label;
+  return { summary, tags: clean.slice(0, 3), example };
+}
+
+function enrichCauseDetails(seg, causes) {
+  return causes.map(c => {
+    const causeAcc = seg.accidents.filter(a => a.dominantCause === c.key);
+    const fatalCount = causeAcc.filter(a => a.fatalities > 0).length;
+    const { summary, tags, example } = causeSummary(seg, c, causeAcc);
+    return { ...c, fatalCount, shortLabel: c.short || CAUSE_SHORT[c.key] || c.label, summary, tags, example };
+  });
+}
+
+function segmentRiskNarrative(seg) {
+  if (!seg.m.n) return 'Pa aksidente të regjistruara.';
+  const top = seg.causes.slice(0, 3).map(c => `${c.shortLabel} (${c.count})`).join(', ');
+  const rest = seg.causes.length > 3 ? ` dhe ${seg.causes.length - 3} të tjera` : '';
+  return `${seg.m.n} aksidente — kryesorisht: ${top}${rest}`;
+}
 
 function trendClass(m) {
   if (m.slope > 0.45) return { key: 'det', label: 'Në përkeqësim', cls: 'det' };
@@ -95,9 +242,9 @@ function buildModel() {
   const nwaModel = buildNwaAssessment(SEGMENTS);
   const segs = SEGMENTS.map((seg, i) => {
     const m = computeSegmentStats(seg);
-    const causes = rootCauses(seg);
     const trend = trendClass(m);
     const nwa = nwaModel.results[i];
+    const causes = enrichCauseDetails({ ...seg, m, nwa }, rootCauses(seg));
     return { ...seg, m, causes, trend, nwa };
   });
 
