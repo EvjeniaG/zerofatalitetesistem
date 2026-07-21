@@ -2,7 +2,7 @@
    app.js - SPA shell: navigation, hash router, module views.
    ============================================================= */
 
-const APP_BUILD='20260629-ui44';
+const APP_BUILD='20260629-ui46';
 
 function modelYearStats(y){
   const rows=ACCIDENTS.filter(a=>a.year===y);
@@ -80,7 +80,7 @@ function cardHead(title,right){
   return `<div class="card-head"><h3 class="card-title">${title}</h3>${right?`<div class="card-actions">${right}</div>`:''}</div>`;
 }
 function cardHeadCount(title,countId,right){
-  return `<div class="card-head"><h3 class="card-title">${title}</h3><span class="card-hint" id="${countId}"></span>${right?`<div class="card-actions">${right}</div>`:''}</div>`;
+  return `<div class="card-head"><h3 class="card-title">${title}</h3><div class="card-head-meta"><span class="card-hint" id="${countId}"></span>${right?`<div class="card-actions">${right}</div>`:''}</div></div>`;
 }
 
 let _map=null;
@@ -607,125 +607,32 @@ function accSegRisk(a){
   return s?s.nwa.integrated:null;
 }
 
-let accFilter={q:'',year:'2025',qark:'all',severity:'all',fatal:'all',sort:'date'};
+let accFilter={q:'',year:'2025',qark:'all',severity:'all',fatal:'all',nwa:'all',sort:'date'};
 const ACC_PAGE_SIZE=150;
 let accPage=1;
-function renderAccidents(){
-  const qarks=[...new Set(ACCIDENTS.map(a=>a.qark))].sort();
-  view().innerHTML=`<div class="view-pad page-shell fade-in page-accidents">
-    ${pageHead('accidents',null,[{kind:'model',tag:'Kalibruar INSTAT · default 2025'}])}
-
-    ${pageZone('Regjistri',`<div class="card acc-list-card">
-      ${cardHeadCount('Lista e Aksidenteve','accCountHint',`<button type="button" class="btn sm ghost" id="accCsv">Eksporto CSV</button>`)}
-      ${accNwaLegend()}
-      <div class="card-pad" style="padding-bottom:0">
-        <div class="filter-pills" id="accYearPills">
-          <button type="button" class="filter-pill${accFilter.year==='all'?' active':''}" data-year="all">Të gjitha<span class="fp-n">${ACCIDENTS.length}</span></button>
-          ${YEARS.map(y=>`<button type="button" class="filter-pill${accFilter.year===String(y)?' active':''}" data-year="${y}">${y}<span class="fp-n">${ACCIDENTS.filter(a=>a.year===y).length}</span></button>`).join('')}
-        </div>
-      </div>
-      <div class="seg-filter-bar acc-filter-bar">
-        <input class="inp seg-search-inp" id="accSearch" placeholder="Kërko ID, rrugë, bashki, segment…" value="${escapeHtml(accFilter.q)}">
-        <select class="inp seg-filter-sel" id="accQark" title="Qarku"><option value="all">Qarku</option>${qarks.map(q=>`<option ${accFilter.qark===q?'selected':''}>${q}</option>`).join('')}</select>
-        <select class="inp seg-filter-sel" id="accSeverity" title="Ashpërsia">
-          <option value="all">Ashpërsia</option>
-          <option value="4" ${accFilter.severity==='4'?'selected':''}>Fatal</option>
-          <option value="3" ${accFilter.severity==='3'?'selected':''}>Lëndime të rënda</option>
-          <option value="2" ${accFilter.severity==='2'?'selected':''}>Lëndime të lehta</option>
-          <option value="1" ${accFilter.severity==='1'?'selected':''}>Vetëm material</option>
-        </select>
-        <select class="inp seg-filter-sel" id="accFatal" title="Fatalitete">
-          <option value="all">Fatalitete</option>
-          <option value="yes" ${accFilter.fatal==='yes'?'selected':''}>Me vdekje</option>
-          <option value="no" ${accFilter.fatal==='no'?'selected':''}>Pa vdekje</option>
-        </select>
-        <select class="inp seg-filter-sel" id="accSort" title="Renditja">
-          <option value="date" ${accFilter.sort==='date'?'selected':''}>Data (më i fundit)</option>
-          <option value="severity" ${accFilter.sort==='severity'?'selected':''}>Ashpërsia</option>
-          <option value="fatalities" ${accFilter.sort==='fatalities'?'selected':''}>Fatalitete</option>
-        </select>
-        <button type="button" class="btn sm ghost" id="accReset">Hiq filtrat</button>
-      </div>
-      <div class="acc-tbl-scroll" id="accTblWrap"></div>
-    </div>`,'zone-registry')}
-  </div>`;
-
-  const apply=()=>{
-    accPage=1;
-    document.querySelectorAll('#accYearPills .filter-pill').forEach(b=>b.classList.toggle('active',b.dataset.year===accFilter.year));
-    renderAccTable();
-  };
-  document.getElementById('accSearch').addEventListener('input',e=>{accFilter.q=e.target.value.toLowerCase();apply();});
-  document.getElementById('accQark').addEventListener('change',e=>{accFilter.qark=e.target.value;apply();});
-  document.getElementById('accSeverity').addEventListener('change',e=>{accFilter.severity=e.target.value;apply();});
-  document.getElementById('accFatal').addEventListener('change',e=>{accFilter.fatal=e.target.value;apply();});
-  document.getElementById('accSort').addEventListener('change',e=>{accFilter.sort=e.target.value;apply();});
-  document.querySelectorAll('#accYearPills .filter-pill').forEach(btn=>{
-    btn.addEventListener('click',()=>{accFilter.year=btn.dataset.year;apply();});
-  });
-  document.getElementById('accCsv')?.addEventListener('click',exportAccCSV);
-  document.getElementById('accReset')?.addEventListener('click',()=>{
-    accFilter={q:'',year:'2025',qark:'all',severity:'all',fatal:'all',sort:'date'};
-    document.getElementById('accSearch').value='';
-    document.getElementById('accQark').value='all';
-    document.getElementById('accSeverity').value='all';
-    document.getElementById('accFatal').value='all';
-    document.getElementById('accSort').value='date';
-    apply();
-  });
-  apply();
-}
-function renderAccTable(){
-  let rows=ACCIDENTS.filter(a=>{
+function filterAccRows(){
+  return ACCIDENTS.filter(a=>{
     if(accFilter.year!=='all'&&String(a.year)!==accFilter.year) return false;
     if(accFilter.qark!=='all'&&a.qark!==accFilter.qark) return false;
     if(accFilter.severity!=='all'&&String(a.severity)!==accFilter.severity) return false;
     if(accFilter.fatal==='yes'&&!(a.fatalities>0)) return false;
     if(accFilter.fatal==='no'&&a.fatalities>0) return false;
+    if(accFilter.nwa==='yes'&&!accCountsForNwa(a)) return false;
+    if(accFilter.nwa==='no'&&accCountsForNwa(a)) return false;
     if(accFilter.q){
-      const hay=(a.id+' '+a.road+' '+a.roadName+' '+a.segment+' '+a.municipality+' '+a.qark+' '+a.collision_type+' '+a.driver_factor).toLowerCase();
+      const hay=(a.id+' '+a.road+' '+a.roadName+' '+a.segment+' '+a.municipality+' '+a.qark+' '+a.collision_type+' '+a.driver_factor+' '+a.policeId).toLowerCase();
       if(!hay.includes(accFilter.q)) return false;
     }
     return true;
+  }).sort((a,b)=>{
+    const sk=accFilter.sort;
+    return sk==='severity'?b.severity-a.severity||b.date-a.date : sk==='fatalities'?b.fatalities-a.fatalities||b.date-a.date : b.date-a.date;
   });
-  const sk=accFilter.sort;
-  rows.sort((a,b)=> sk==='severity'?b.severity-a.severity||b.date-a.date : sk==='fatalities'?b.fatalities-a.fatalities||b.date-a.date : b.date-a.date);
-  const totalPages=Math.max(1,Math.ceil(rows.length/ACC_PAGE_SIZE));
-  if(accPage>totalPages) accPage=totalPages;
-  if(accPage<1) accPage=1;
-  const pageRows=rows.slice((accPage-1)*ACC_PAGE_SIZE,accPage*ACC_PAGE_SIZE);
-  const wrap=document.getElementById('accTblWrap');
-  const hint=document.getElementById('accCountHint');
-  const yrStats=accFilter.year==='all'?{n:rows.length,fat:rows.reduce((s,a)=>s+a.fatalities,0)}:modelYearStats(Number(accFilter.year));
-  const offYr=accFilter.year!=='all'?OFFICIAL.yearly.find(y=>y.year===Number(accFilter.year)):null;
-  if(hint) hint.textContent=accFilter.year==='all'
-    ?`${rows.length} aksidente · ${periodLine('model')}`
-    :`${rows.length} aksidente · ${yrStats.fat} fatalitete · ${yrStats.inj||rows.reduce((s,a)=>s+(a.injured||0),0)} lënduar · INSTAT ${offYr?offYr.accidents:''}/${offYr?offYr.fatalities:''}/${offYr?offYr.injured:''}`;
-  if(!wrap) return;
-  const pager=rows.length>ACC_PAGE_SIZE?`<div class="acc-pager">
-    <button type="button" class="btn sm ghost" id="accPrev" ${accPage<=1?'disabled':''}>← Mbrapa</button>
-    <span class="acc-pager-info">Faqja ${accPage} / ${totalPages} · ${pageRows.length} rreshta</span>
-    <button type="button" class="btn sm ghost" id="accNext" ${accPage>=totalPages?'disabled':''}>Para →</button>
-  </div>`:'';
-  wrap.innerHTML=rows.length?`${pager}<table class="tbl tbl-pro acc-tbl"><thead><tr>
-    <th class="col-id-freeze">ID</th><th class="num col-risk-freeze" title="Niveli i riskut të segmentit 1-5">Risk</th><th class="col-nwa-freeze" title="A llogaritet në historikun reaktiv NWA?">Për riskun</th>
-    <th>Data</th><th>Dita</th><th>Ora</th><th>Viti</th>
-    <th>Segment</th><th>Rruga</th><th>Bashkia</th><th>Qarku</th><th>Tipi rruge</th>
-    <th>Lloji aksidentit</th><th>Ashpërsia</th>
-    <th class="num">Fat.</th><th class="num">L. rënda</th><th class="num">L. lehta</th><th class="num">Lënduar</th>
-    <th>Viktima</th><th>Alk.</th>
-    <th class="num">Mjete</th><th class="num">Këmb.</th>
-    <th>Moti</th><th>Ndriçimi</th><th>Sipërfaqja</th>
-    <th class="num">Limit</th><th class="num">km/h</th>
-    <th>Shoferi</th><th>Infrastruktura</th><th>Automjeti</th>
-    <th>Shkaku</th><th>Shkaku zyrt.</th><th class="num">Përgj. min</th>
-    <th>ID Policia</th>
-  </tr></thead><tbody>
-  ${pageRows.map(a=>{
-    const nwaOn=accCountsForNwa(a);
-    const rLevel=accSegRisk(a);
-    return `<tr class="clickable" onclick="location.hash='#/segment/${a.segment}'" title="Hap segmentin ${a.segment}">
-    <td class="mono cell-id col-id-freeze">${a.id}</td>
+}
+function accRowCells(a){
+  const nwaOn=accCountsForNwa(a);
+  const rLevel=accSegRisk(a);
+  return `<td class="mono cell-id col-id-freeze">${a.id}</td>
     <td class="num col-risk-freeze">${rLevel!=null?`<span class="acc-risk-lvl" style="--c:${riskLevelColor(rLevel)}">${rLevel}</span>`:'-'}</td>
     <td class="col-nwa-freeze" title="${nwaOn?'Llogaritet në NWA ('+DATA_PERIODS.nwa.label+')':'Nuk llogaritet në historikun reaktiv NWA'}">${nwaOn?'<span class="badge badge-warn">Po</span>':'<span class="badge neutral">Jo</span>'}</td>
     <td>${fmt.dateShort(a.date)}</td>
@@ -758,17 +665,185 @@ function renderAccTable(){
     <td>${accCauseLabel(a.dominantCause)}</td>
     <td class="cell-meta">${escapeHtml(a.officialCause||'-')}</td>
     <td class="num">${a.response_time}</td>
-    <td class="mono cell-meta">${a.policeId||'-'}</td>
-  </tr>`;}).join('')}
-  </tbody></table>`
-    :`<div class="empty" style="padding:32px"><p>Asnjë aksident nuk përputhet me kriteret.</p></div>`;
+    <td class="mono cell-meta">${a.policeId||'-'}</td>`;
+}
+function accMobileCard(a){
+  const nwaOn=accCountsForNwa(a);
+  const rLevel=accSegRisk(a);
+  return `<article class="acc-card clickable" onclick="location.hash='#/segment/${a.segment}'" title="Hap segmentin ${a.segment}">
+    <div class="acc-card-top">
+      <span class="acc-card-id mono">${a.id}</span>
+      <span class="badge ${a.severity===4?'badge-fatal':a.severity>=3?'badge-warn':'neutral'}">${a.severityLabel}</span>
+      ${rLevel!=null?`<span class="acc-risk-lvl" style="--c:${riskLevelColor(rLevel)}">${rLevel}</span>`:''}
+      ${nwaOn?'<span class="badge badge-warn">Për riskun</span>':'<span class="badge neutral">Jo NWA</span>'}
+    </div>
+    <h4 class="acc-card-road">${escapeHtml(a.road)}</h4>
+    <p class="acc-card-sub">${fmt.dateShort(a.date)} · ${a.time} · ${a.weekday||''} · ${a.municipality}, ${a.qark}</p>
+    <div class="acc-card-stats">
+      <span><b>${a.fatalities||0}</b> fat.</span>
+      <span><b>${a.injured||0}</b> lënduar</span>
+      <span>${escapeHtml(a.collision_type)}</span>
+    </div>
+    <div class="acc-card-foot">
+      <span class="mono cell-id">${a.segment}</span>
+      <span>${accCauseLabel(a.dominantCause)}</span>
+    </div>
+  </article>`;
+}
+const ACC_CSV_HEADERS=[
+  'ID','Risk','Per riskun','Data','Dita','Ora','Viti','Segment','Rruga','Bashkia','Qarku','Tipi rruge',
+  'Lloji aksidentit','Ashpersia','Fat.','L. rënda','L. lehta','Lënduar','Viktima','Alk.','Mjete','Kemb.',
+  'Moti','Ndricimi','Siperfaqja','Limit','km/h','Shoferi','Infrastruktura','Automjeti','Shkaku','Shkaku zyrt.','Pergj. min','ID Policia'
+];
+function accidentToCSVRow(a){
+  const nwaOn=accCountsForNwa(a);
+  const rLevel=accSegRisk(a);
+  return [
+    a.id,rLevel??'',nwaOn?'Po':'Jo',fmt.dateShort(a.date),a.weekday||'',a.time,a.year,a.segment,a.road,
+    a.municipality,a.qark,a.roadType,a.collision_type,a.severityLabel,a.fatalities||0,a.serious_injuries||0,
+    a.minor_injuries||0,a.injured||0,a.victim_type||'',a.alcohol_involved?'Po':'Jo',a.vehicles,a.pedestrians||0,
+    a.weather,a.lighting,a.road_condition,a.speed_limit,a.estimated_speed,a.driver_factor,a.infrastructure_factor,
+    a.vehicle_factor,accCauseLabel(a.dominantCause),a.officialCause||'',a.response_time,a.policeId||''
+  ].map(csvCell).join(',');
+}
+function renderAccidents(){
+  const qarks=[...new Set(ACCIDENTS.map(a=>a.qark))].sort();
+  view().innerHTML=`<div class="view-pad page-shell fade-in page-accidents">
+    ${pageHead('accidents',null,[{kind:'model',tag:'Kalibruar INSTAT · default 2025'}])}
+
+    ${pageZone('Regjistri',`<div class="card acc-list-card">
+      ${cardHeadCount('Lista e Aksidenteve','accCountHint',`<button type="button" class="btn sm primary" id="accCsv">Eksporto CSV</button>`)}
+      ${accNwaLegend()}
+      <div class="card-pad" style="padding-bottom:0">
+        <div class="filter-pills" id="accYearPills">
+          <button type="button" class="filter-pill${accFilter.year==='all'?' active':''}" data-year="all">Të gjitha<span class="fp-n">${ACCIDENTS.length}</span></button>
+          ${YEARS.map(y=>`<button type="button" class="filter-pill${accFilter.year===String(y)?' active':''}" data-year="${y}">${y}<span class="fp-n">${ACCIDENTS.filter(a=>a.year===y).length}</span></button>`).join('')}
+        </div>
+      </div>
+      <div class="seg-filter-bar acc-filter-bar">
+        <input class="inp seg-search-inp" id="accSearch" placeholder="Kërko ID, rrugë, bashki, segment…" value="${escapeHtml(accFilter.q)}">
+        <select class="inp seg-filter-sel" id="accQark" title="Qarku"><option value="all">Qarku</option>${qarks.map(q=>`<option ${accFilter.qark===q?'selected':''}>${q}</option>`).join('')}</select>
+        <select class="inp seg-filter-sel" id="accSeverity" title="Ashpërsia">
+          <option value="all">Ashpërsia</option>
+          <option value="4" ${accFilter.severity==='4'?'selected':''}>Fatal</option>
+          <option value="3" ${accFilter.severity==='3'?'selected':''}>Lëndime të rënda</option>
+          <option value="2" ${accFilter.severity==='2'?'selected':''}>Lëndime të lehta</option>
+          <option value="1" ${accFilter.severity==='1'?'selected':''}>Vetëm material</option>
+        </select>
+        <select class="inp seg-filter-sel" id="accFatal" title="Fatalitete">
+          <option value="all">Fatalitete</option>
+          <option value="yes" ${accFilter.fatal==='yes'?'selected':''}>Me vdekje</option>
+          <option value="no" ${accFilter.fatal==='no'?'selected':''}>Pa vdekje</option>
+        </select>
+        <select class="inp seg-filter-sel" id="accNwa" title="Për riskun">
+          <option value="all">Për riskun</option>
+          <option value="yes" ${accFilter.nwa==='yes'?'selected':''}>Po (NWA)</option>
+          <option value="no" ${accFilter.nwa==='no'?'selected':''}>Jo</option>
+        </select>
+        <select class="inp seg-filter-sel" id="accSort" title="Renditja">
+          <option value="date" ${accFilter.sort==='date'?'selected':''}>Data (më i fundit)</option>
+          <option value="severity" ${accFilter.sort==='severity'?'selected':''}>Ashpërsia</option>
+          <option value="fatalities" ${accFilter.sort==='fatalities'?'selected':''}>Fatalitete</option>
+        </select>
+        <button type="button" class="btn sm ghost" id="accReset">Hiq filtrat</button>
+      </div>
+      <p class="acc-scroll-hint" id="accScrollHint">↔ Rrëshqit horizontalisht për të gjitha kolonat</p>
+      <div class="acc-tbl-panel acc-desktop-only">
+        <div class="acc-tbl-scroll" id="accTblWrap"></div>
+        <div class="acc-pager-wrap" id="accPagerWrap"></div>
+      </div>
+      <div class="acc-mobile-list acc-mobile-only" id="accMobileWrap"></div>
+    </div>`,'zone-registry')}
+  </div>`;
+
+  const apply=()=>{
+    accPage=1;
+    document.querySelectorAll('#accYearPills .filter-pill').forEach(b=>b.classList.toggle('active',b.dataset.year===accFilter.year));
+    renderAccTable();
+  };
+  document.getElementById('accSearch').addEventListener('input',e=>{accFilter.q=e.target.value.toLowerCase();apply();});
+  document.getElementById('accQark').addEventListener('change',e=>{accFilter.qark=e.target.value;apply();});
+  document.getElementById('accSeverity').addEventListener('change',e=>{accFilter.severity=e.target.value;apply();});
+  document.getElementById('accFatal').addEventListener('change',e=>{accFilter.fatal=e.target.value;apply();});
+  document.getElementById('accNwa').addEventListener('change',e=>{accFilter.nwa=e.target.value;apply();});
+  document.getElementById('accSort').addEventListener('change',e=>{accFilter.sort=e.target.value;apply();});
+  document.querySelectorAll('#accYearPills .filter-pill').forEach(btn=>{
+    btn.addEventListener('click',()=>{accFilter.year=btn.dataset.year;apply();});
+  });
+  document.getElementById('accCsv')?.addEventListener('click',exportAccCSV);
+  document.getElementById('accReset')?.addEventListener('click',()=>{
+    accFilter={q:'',year:'2025',qark:'all',severity:'all',fatal:'all',nwa:'all',sort:'date'};
+    document.getElementById('accSearch').value='';
+    document.getElementById('accQark').value='all';
+    document.getElementById('accSeverity').value='all';
+    document.getElementById('accFatal').value='all';
+    document.getElementById('accNwa').value='all';
+    document.getElementById('accSort').value='date';
+    apply();
+  });
+  apply();
+}
+function accPagerHtml(pageRows,totalPages){
+  if(totalPages<=1) return '';
+  return `<div class="acc-pager">
+    <button type="button" class="btn sm ghost" id="accPrev" ${accPage<=1?'disabled':''}>← Mbrapa</button>
+    <span class="acc-pager-info">Faqja ${accPage} / ${totalPages} · ${pageRows.length} rreshta</span>
+    <button type="button" class="btn sm ghost" id="accNext" ${accPage>=totalPages?'disabled':''}>Para →</button>
+  </div>`;
+}
+function bindAccPager(totalPages){
   document.getElementById('accPrev')?.addEventListener('click',()=>{ if(accPage>1){ accPage--; renderAccTable(); }});
   document.getElementById('accNext')?.addEventListener('click',()=>{ if(accPage<totalPages){ accPage++; renderAccTable(); }});
 }
+function renderAccTable(){
+  const rows=filterAccRows();
+  const totalPages=Math.max(1,Math.ceil(rows.length/ACC_PAGE_SIZE));
+  if(accPage>totalPages) accPage=totalPages;
+  if(accPage<1) accPage=1;
+  const pageRows=rows.slice((accPage-1)*ACC_PAGE_SIZE,accPage*ACC_PAGE_SIZE);
+  const wrap=document.getElementById('accTblWrap');
+  const mobileWrap=document.getElementById('accMobileWrap');
+  const hint=document.getElementById('accCountHint');
+  const scrollHint=document.getElementById('accScrollHint');
+  const yrStats=accFilter.year==='all'?{n:rows.length,fat:rows.reduce((s,a)=>s+a.fatalities,0),inj:rows.reduce((s,a)=>s+(a.injured||0),0)}:modelYearStats(Number(accFilter.year));
+  const offYr=accFilter.year!=='all'?OFFICIAL.yearly.find(y=>y.year===Number(accFilter.year)):null;
+  if(hint) hint.textContent=accFilter.year==='all'
+    ?`${rows.length} aksidente · ${periodLine('model')}`
+    :`${rows.length} aksidente · ${yrStats.fat} fatalitete · ${yrStats.inj||0} lënduar · INSTAT ${offYr?offYr.accidents:''}/${offYr?offYr.fatalities:''}/${offYr?offYr.injured:''}`;
+  if(scrollHint) scrollHint.style.display=rows.length?'':'none';
+  const empty=`<div class="empty" style="padding:32px"><p>Asnjë aksident nuk përputhet me kriteret.</p></div>`;
+  const pager=accPagerHtml(pageRows,totalPages);
+  if(wrap){
+    wrap.innerHTML=rows.length?`<table class="tbl tbl-pro acc-tbl"><thead><tr>
+    <th class="col-id-freeze">ID</th><th class="num col-risk-freeze" title="Niveli i riskut të segmentit 1-5">Risk</th><th class="col-nwa-freeze" title="A llogaritet në historikun reaktiv NWA?">Për riskun</th>
+    <th>Data</th><th>Dita</th><th>Ora</th><th>Viti</th>
+    <th>Segment</th><th>Rruga</th><th>Bashkia</th><th>Qarku</th><th>Tipi rruge</th>
+    <th>Lloji aksidentit</th><th>Ashpërsia</th>
+    <th class="num">Fat.</th><th class="num">L. rënda</th><th class="num">L. lehta</th><th class="num">Lënduar</th>
+    <th>Viktima</th><th>Alk.</th>
+    <th class="num">Mjete</th><th class="num">Këmb.</th>
+    <th>Moti</th><th>Ndriçimi</th><th>Sipërfaqja</th>
+    <th class="num">Limit</th><th class="num">km/h</th>
+    <th>Shoferi</th><th>Infrastruktura</th><th>Automjeti</th>
+    <th>Shkaku</th><th>Shkaku zyrt.</th><th class="num">Përgj. min</th>
+    <th>ID Policia</th>
+  </tr></thead><tbody>
+  ${pageRows.map(a=>`<tr class="clickable" onclick="location.hash='#/segment/${a.segment}'" title="Hap segmentin ${a.segment}">${accRowCells(a)}</tr>`).join('')}
+  </tbody></table>`:empty;
+    const pagerEl=document.getElementById('accPagerWrap');
+    if(pagerEl) pagerEl.innerHTML=rows.length?pager:'';
+  }
+  if(mobileWrap){
+    mobileWrap.innerHTML=rows.length?`<div class="acc-card-stack">${pageRows.map(accMobileCard).join('')}</div>${pager}`:empty;
+  }
+  bindAccPager(totalPages);
+  enhanceA11y();
+}
 function exportAccCSV(){
-  const table=document.querySelector('.acc-tbl');
-  if(!table) return;
-  downloadCSV('regjistri-aksidenteve-'+DATA_PERIODS.model.label.replace(/-/g,'-')+'.csv',tableToCSV(table));
+  const rows=filterAccRows();
+  if(!rows.length) return;
+  const csv='\ufeff'+ACC_CSV_HEADERS.map(csvCell).join(',')+'\r\n'+rows.map(accidentToCSVRow).join('\r\n');
+  downloadCSV('regjistri-aksidenteve-'+DATA_PERIODS.model.label.replace(/-/g,'-')+'.csv',csv);
 }
 
 /* ================================================================
