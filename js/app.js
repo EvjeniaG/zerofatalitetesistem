@@ -2,47 +2,113 @@
    app.js - SPA shell: navigation, hash router, module views.
    ============================================================= */
 
-const APP_BUILD='20260629-ui18';
+const APP_BUILD='20260629-ui44';
+
+function modelYearStats(y){
+  const rows=ACCIDENTS.filter(a=>a.year===y);
+  return {n:rows.length,fat:rows.reduce((s,a)=>s+a.fatalities,0),inj:rows.reduce((s,a)=>s+a.injured,0)};
+}
+
+function periodNotes(items){
+  if(!items||!items.length) return '';
+  return `<div class="period-notes">${items.map(it=>{
+    const p=DATA_PERIODS[it.kind];
+    if(!p) return '';
+    return `<span class="period-chip" title="${escapeHtml(p.desc)}"><span class="pc-k">${it.tag}</span> ${p.label}</span>`;
+  }).join('')}</div>`;
+}
+function periodLine(kind){
+  const p=DATA_PERIODS[kind];
+  return p ? `Periudha ${p.label}` : '';
+}
+
+function pageZone(title, inner, cls=''){
+  return `<section class="page-zone${cls?' '+cls:''}">
+    <header class="zone-head"><h3 class="zone-title">${title}</h3></header>
+    <div class="zone-content">${inner}</div>
+  </section>`;
+}
+
+function riskLegendBar(){
+  return `<div class="risk-legend-bar" role="note">
+    <span><b>Niveli 1-5</b> - rezultati përfundimtar</span>
+    <span><b>Rruga</b> - gjendja e infrastrukturës</span>
+    <span><b>Historiku</b> - aksidentet (${DATA_PERIODS.nwa.label})</span>
+  </div>`;
+}
+
+/* -- Copy & navigim institucional (uniforme) -- */
+const PAGES={
+  dashboard:{nav:'Panorama',title:'Panorama Kombëtare',crumb:'Panorama Kombëtare'},
+  'risk-map':{nav:'Harta e Riskut',title:'Harta e Riskut',crumb:'Harta e Riskut'},
+  segments:{nav:'Segmentet',title:'Regjistri i Segmenteve',crumb:'Regjistri i Segmenteve'},
+  accidents:{nav:'Regjistri i Aksidenteve',title:'Regjistri i Aksidenteve',crumb:'Regjistri i Aksidenteve'},
+  interventions:{nav:'Ndërhyrjet',title:'Plan i Ndërhyrjeve',crumb:'Plan i Ndërhyrjeve'},
+  reports:{nav:'Raporte',title:'Gjenerimi i Raporteve',crumb:'Raporte'},
+  methodology:{nav:'Metodologjia',title:'Metodologjia NWA',crumb:'Metodologjia NWA'},
+  quality:{nav:'Të Dhënat',title:'Burimet e të Dhënave',crumb:'Burimet e të Dhënave'},
+  settings:{nav:'Parametrat',title:'Parametrat e Sistemit',crumb:'Parametrat'},
+  segment:{title:'Profili i Segmentit',crumb:'Profili i Segmentit'},
+};
 const NAV=[
-  {group:'Analizë', items:[
-    {id:'dashboard',  label:'Paneli Analitik',      ico:'grid'},
-    {id:'risk-map',   label:'Harta e Riskut',       ico:'map'},
-    {id:'segments',   label:'Segmentet',            ico:'layers', badge:()=>NAT.blackSpots+NAT.emerging+NAT.monitor, warn:true},
+  {group:'Panorama',items:[{id:'dashboard',label:PAGES.dashboard.nav,ico:'grid'}]},
+  {group:'Territori',items:[
+    {id:'risk-map',label:PAGES['risk-map'].nav,ico:'map'},
+    {id:'segments',label:PAGES.segments.nav,ico:'layers',badge:()=>NAT.blackSpots+NAT.emerging+NAT.monitor,warn:true},
+    {id:'accidents',label:PAGES.accidents.nav,ico:'car',badge:()=>fmt.n(modelYearStats(2025).n)},
   ]},
-  {group:'Veprim', items:[
-    {id:'interventions', label:'Ndërhyrjet', ico:'tool'},
-    {id:'reports',       label:'Raporte',    ico:'file'},
+  {group:'Veprim',items:[
+    {id:'interventions',label:PAGES.interventions.nav,ico:'tool'},
+    {id:'reports',label:PAGES.reports.nav,ico:'file'},
   ]},
-  {group:'Sistemi', items:[
-    {id:'methodology', label:'Metodologjia',       ico:'book'},
-    {id:'quality',     label:'Cilësia e të Dhënave',ico:'check'},
-    {id:'settings',    label:'Konfigurimet',        ico:'gear'},
+  {group:'Referencë',items:[
+    {id:'methodology',label:PAGES.methodology.nav,ico:'book'},
+    {id:'quality',label:PAGES.quality.nav,ico:'check'},
+    {id:'settings',label:PAGES.settings.nav,ico:'gear'},
   ]},
 ];
-const TITLES={
-  dashboard:'Paneli Analitik Kombëtar',  'risk-map':'Harta e Riskut',
-  segments:'Segmentet Rrugore',
-  interventions:'Ndërhyrjet',reports:'Raportimi',methodology:'Metodologjia',
-  quality:'Cilësia e të Dhënave',settings:'Konfigurimet',segment:'Profili i Segmentit'
-};
+function pageHead(key,lead,periods){
+  const p=PAGES[key]||{title:key};
+  return `<header class="page-head">
+    <h2 class="page-title">${p.title}</h2>
+    ${lead?`<p class="page-lead page-lead--mini">${lead}</p>`:''}
+    ${periods?periodNotes(periods):''}
+  </header>`;
+}
+function pageBlock(cls,inner){ return `<section class="page-block${cls?' '+cls:''}">${inner}</section>`; }
+function cardHead(title,right){
+  return `<div class="card-head"><h3 class="card-title">${title}</h3>${right?`<div class="card-actions">${right}</div>`:''}</div>`;
+}
+function cardHeadCount(title,countId,right){
+  return `<div class="card-head"><h3 class="card-title">${title}</h3><span class="card-hint" id="${countId}"></span>${right?`<div class="card-actions">${right}</div>`:''}</div>`;
+}
 
 let _map=null;
 const view=()=>document.getElementById('view');
 
 /* ---------- shared UI helpers ---------- */
 function kpi(o){
-  const cls=o.tone||'';
   let deltaHtml='';
   if(o.delta!=null){
-    const dir=o.delta>0?(o.invert?'down':'up'):o.delta<0?(o.invert?'up':'down'):'flat';
-    deltaHtml=`<span class="delta ${dir}">${o.delta>0?'+':''}${o.delta}${o.deltaUnit||'%'}</span>`;
+    const up=o.delta>0, down=o.delta<0;
+    let cls='delta-flat';
+    if(o.invert){ cls=up?'delta-good':down?'delta-bad':'delta-flat'; }
+    else if(o.deltaBad!==false){ cls=up?'delta-bad':down?'delta-good':'delta-flat'; }
+    else { cls=up?'delta-up':down?'delta-down':'delta-flat'; }
+    deltaHtml=`<span class="delta ${cls}">${up?'+':''}${o.delta}${o.deltaUnit||'%'}</span>`;
   }
-  return `<div class="kpi ${cls}">
+  const tone=o.tone?` kpi--${o.tone}`:'';
+  return `<div class="kpi${tone}">
     <div class="kpi-label">${o.label}</div>
     <div class="kpi-val tnum">${o.val}${o.unit?`<span class="u">${o.unit}</span>`:''}</div>
-    <div class="kpi-sub">${deltaHtml}${o.sub?`<span class="kpi-note">${o.sub}</span>`:''}</div>
+    <div class="kpi-sub">${deltaHtml}</div>
   </div>`;
 }
+function toneFatal(n,fallback='-'){
+  if(n==null||n===0||n==='0') return fallback;
+  return `<span class="tone-fatal">${n}</span>`;
+}
+function toneGood(n){ return `<span class="tone-good">${n}</span>`; }
 function trendChip(tr){
   return `<span class="trend-chip ${tr.cls}">${tr.label}</span>`;
 }
@@ -50,15 +116,19 @@ function riskCell(score){
   const t=riskTier(score);
   return `<span class="score-pill"><span class="riskbar" style="flex:1"><i style="width:${score}%;background:${t.color}"></i></span><span class="score-num" style="color:${t.color}">${score}</span></span>`;
 }
-function nwaCell(nwa){ return nwaClassCell(nwa); }
+function nwaCell(nwa){ return nwaRiskBreakdown(nwa, { compact: true }); }
+function riskViz(nwa, opts){ return nwaRiskBreakdown(nwa, opts || {}); }
 function nwaBadge(nwa){ return nwaClassBadge(nwa); }
 function nwaColor(nwa){ return (nwa.meta||NWA_CLASS_META[nwa.integrated]).color; }
 function tierBadge(score){ const t=riskTier(score); return `<span class="badge ${t.key} dot">${t.label}</span>`; }
 function secHead(title,pill){ return `<div class="sec-head"><h4>${title}</h4>${pill?`<span class="pill">${pill}</span>`:''}<span class="line"></span></div>`; }
-function yoyCell(v){
+function yoyCell(v, badUp){
   if(v==null||v===undefined) return '<span class="yoy-flat">-</span>';
-  const cls=v>0?'yoy-up':v<0?'yoy-down':'yoy-flat';
-  return `<span class="${cls}">${v>0?'+':''}${v}%</span>`;
+  const up=v>0, down=v<0;
+  let cls='yoy-flat';
+  if(badUp!==false){ cls=up?'yoy-bad':down?'yoy-good':'yoy-flat'; }
+  else { cls=up?'yoy-up':down?'yoy-down':'yoy-flat'; }
+  return `<span class="${cls}">${up?'+':''}${v}%</span>`;
 }
 function sectionDivider(title,sub,tag){
   return `<div class="section-divider"><h4>${title}</h4>${tag||''}<span class="line"></span>${sub?`<span>${sub}</span>`:''}</div>`;
@@ -83,7 +153,7 @@ function buildNav(){
       ${g.items.map(it=>`<a class="nav-item" data-route="${it.id}" href="#/${it.id}" title="${it.label}">
         <span class="nav-ico">${icon(it.ico)}</span>
         <span class="nav-label">${it.label}</span>
-        ${it.badge?`<span class="nav-badge ${it.warn?'warn':''}">${it.badge()}</span>`:''}
+        ${it.badge?`<span class="nav-badge">${it.badge()}</span>`:''}
       </a>`).join('')}
     </div>`).join('');
 }
@@ -143,7 +213,7 @@ function enhanceExports(){
     const table=card.querySelector('table.tbl');
     const head=card.querySelector('.card-head');
     if(!table||!head||head.querySelector('[data-export-btn]')) return;
-    const title=(head.querySelector('h5')?.textContent||'tabela').trim();
+    const title=(head.querySelector('h3,h5')?.textContent||'tabela').trim();
     const btn=document.createElement('button');
     btn.type='button';
     btn.className='btn sm ghost export-btn';
@@ -161,12 +231,13 @@ function navigate(){
   const hash=location.hash.replace(/^#\//,'')||'dashboard';
   const [route,arg]=hash.split('/');
   if(route==='blackspots'){ segFilter.status='blackspot'; location.hash='#/segments'; return; }
-  if(route==='prediction'){ segFilter.status='watch'; location.hash='#/segments'; return; }
+  if(route==='prediction'){ segFilter.status='emerging'; location.hash='#/segments'; return; }
   if(_map){ try{_map.remove();}catch(e){} _map=null; }
   setActiveNav(route);
-  document.getElementById('pageTitle').textContent=TITLES[route]||'-';
+  const pt=PAGES[route]||PAGES.segment;
+  document.getElementById('pageTitle').textContent=route==='segment'?`${PAGES.segment.crumb} · ${arg}`:(pt.crumb||pt.title||'-');
   const v=view(); v.scrollTop=0;
-  const R={dashboard:renderDashboard,'risk-map':renderRiskMap,segments:renderSegments,interventions:renderInterventions,reports:renderReports,methodology:renderMethodology,quality:renderQuality,settings:renderSettings,segment:()=>renderSegmentProfile(arg)};
+  const R={dashboard:renderDashboard,'risk-map':renderRiskMap,segments:renderSegments,accidents:renderAccidents,interventions:renderInterventions,reports:renderReports,methodology:renderMethodology,quality:renderQuality,settings:renderSettings,segment:()=>renderSegmentProfile(arg)};
   (R[route]||renderDashboard)();
   enhanceA11y();
   enhanceExports();
@@ -188,108 +259,127 @@ function renderDashboard(){
   const y2025=OFFICIAL.yoy.find(y=>y.year===2025);
   const topSeg=[...SEGS].sort((a,b)=>b.nwa.integrated-a.nwa.integrated||b.priority-a.priority).slice(0,8);
   const years=offYears();
-  const causeCols=[CHART_COL.red,CHART_COL.amber,CHART_COL.navy,CHART_COL.teal,CHART_COL.blue,'#64748b','#7c3aed','#059669','#ea580c','#334155','#94a3b8'];
+  const causeCols=['#0b1f3a','#13315c','#1e3a5f','#2563eb','#3b82f6','#64748b','#475569','#334155','#1e293b','#64748b','#94a3b8'];
   const q25=Object.entries(OFFICIAL.accidentsByQark[2025]).sort((a,b)=>b[1]-a[1]);
 
-  view().innerHTML=`<div class="view-pad fade-in">
-    <div class="page-head">
-      <h3>Paneli Analitik i Sigurisë Rrugore</h3>
-      <p>Pamje kombëtare për periudhën ${OFFICIAL.period}. Të dhënat zyrtare formojnë bazën e vendimmarrjes; analiza territoriale identifikon riskun lokal dhe prioritetet e ndërhyrjes.</p>
-    </div>
+  view().innerHTML=`<div class="view-pad page-shell fade-in page-dashboard">
+    ${pageHead('dashboard',`${latest.year} · ${NAT.segments} segmente`,[
+      {kind:'official',tag:'KPI zyrtare'},
+      {kind:'model',tag:'Rrjeti & aksidente'},
+      {kind:'nwa',tag:'Risku NWA'},
+    ])}
 
-    <div class="grid grid-kpi">
-      ${kpi({label:'Fatalitete',val:latest.fatalities,ico:'skull',tone:'red',delta:y2025.fatalities,sub:`${latest.year} · ndryshim vjetor`})}
-      ${kpi({label:'Aksidente',val:fmt.n(latest.accidents),ico:'car',tone:'navy',delta:y2025.accidents,sub:`${latest.year}`})}
-      ${kpi({label:'Të aksidentuar',val:fmt.n(latest.injured),ico:'alert',tone:'amber',delta:y2025.injured,sub:'vrarë dhe të plagosur'})}
-      ${kpi({label:'Shkalla e fatalitetit',val:latest.fatalityRate,unit:'%',ico:'shield',tone:'red',sub:'për 100 aksidente'})}
-    </div>
+    ${pageZone('Prioritetet',`<div class="network-strip">
+      <a class="ns-item ns-item--fatal" href="#/segments" data-dash-filter="blackspot"><span class="ns-label">Pikat e Zeza</span><span class="ns-val tnum">${NAT.blackSpots}</span></a>
+      <a class="ns-item ns-item--warn" href="#/segments" data-dash-filter="emerging"><span class="ns-label">Në Zhvillim</span><span class="ns-val tnum">${NAT.emerging}</span></a>
+      <a class="ns-item ns-item--risk" href="#/segments" data-dash-filter="high"><span class="ns-label">Risk i Lartë</span><span class="ns-val tnum">${NAT.highRisk}</span></a>
+      <a class="ns-item ns-item--neutral" href="#/segments" data-dash-filter="all"><span class="ns-label">Risk Mesatar</span><span class="ns-val tnum">${NAT.avgClass}</span></a>
+    </div>`,'zone-priority')}
 
-    <div class="grid g2 mt-20">
-      <div class="card">
-        <div class="card-head"><h5>Evolucioni kombëtar</h5><span class="data-tag official">Zyrtare · ${OFFICIAL.period}</span></div>
-        <div class="card-pad">${lineChart({h:240,labels:years,series:[
-          {name:'Aksidente',color:CHART_COL.navy,data:offSeries('accidents')},
-          {name:'Fatalitete',color:CHART_COL.red,data:offSeries('fatalities')},
-        ]})}
-        <div class="flex-c gap-16 mt-12">${chartLegend([{color:CHART_COL.navy,label:'Aksidente'},{color:CHART_COL.red,label:'Fatalitete'}])}</div></div>
+    ${pageZone('Treguesit zyrtarë',`<div class="grid g4 dash-official">
+      ${kpi({label:'Fatalitete',val:latest.fatalities,delta:y2025.fatalities,tone:'fatal',deltaBad:true})}
+      ${kpi({label:'Aksidente',val:fmt.n(latest.accidents),delta:y2025.accidents,tone:'acc',deltaBad:true})}
+      ${kpi({label:'Të Aksidentuar',val:fmt.n(latest.injured),delta:y2025.injured,tone:'injured',deltaBad:true})}
+      ${kpi({label:'Shkalla e Fatalitetit',val:latest.fatalityRate,unit:'%',tone:'fatal'})}
+    </div>`,'zone-kpi')}
+
+    ${pageZone('Analiza e rrjetit',`<div class="dash-focus-layout">
+      <div class="card card-table">
+        ${cardHead('Segmentet me Risk më të Lartë',`<a class="btn sm ghost" href="#/segments">Regjistri</a>`)}
+        ${riskLegendBar()}
+        <div class="tbl-wrap"><table class="tbl tbl-pro"><thead><tr>
+          <th>#</th><th>Segment</th><th class="num">Aks.</th><th class="num">Fat.</th><th class="col-risk-viz">Niveli i riskut</th>
+        </tr></thead><tbody>
+          ${topSeg.map((s,i)=>`<tr class="clickable" onclick="location.hash='#/segment/${s.id}'">
+            <td><span class="rank">${i+1}</span></td>
+            <td><span class="strong">${escapeHtml(shortRoad(s))}</span><span class="cell-sub">${s.municipality} · ${s.id}</span></td>
+            <td class="num"><b>${s.m.n}</b></td>
+            <td class="num">${toneFatal(s.m.fatalities)}</td>
+            <td class="col-risk-viz">${nwaCell(s.nwa)}</td></tr>`).join('')}
+        </tbody></table></div>
       </div>
-      <div class="card">
-        <div class="card-head"><h5>Shkaku i aksidentit</h5><span class="data-tag official">Zyrtare</span></div>
-        <div class="card-pad donut-wrap">
-          ${donut(OFFICIAL.causes.map((c,i)=>({val:c.pct,color:causeCols[i],label:c.label})),{center:'100',sub:'kontribut',size:160})}
-          <div class="donut-side">
-            ${OFFICIAL.causes.slice(0,6).map((c,i)=>`<div class="scorebar-row">
-              <span class="sb-name sb-name-wide">${c.label}</span>
-              <span class="sb-track"><i style="width:${c.pct}%;background:${causeCols[i]}"></i></span>
-              <span class="sb-num">${c.pct}%</span></div>`).join('')}
+      <div class="card card-map dash-map-stretch">
+        ${cardHead('Harta e Riskut',`<a class="btn sm ghost" href="#/risk-map">Hap</a>`)}
+        <div class="map-shell dash-map-shell"><div id="mapMain"></div></div>
+      </div>
+    </div>
+    <div class="dash-nwa-strip">${nwaModelCard()}</div>`,'zone-analysis')}
+
+    ${pageZone('Statistika',`<div class="card-grid-stats">
+        <div class="card">
+          ${cardHead('Evolucioni Kombëtar')}
+          <div class="card-pad">${lineChart({h:200,labels:years,series:[
+            {name:'Aksidente',color:'#0b1f3a',data:offSeries('accidents')},
+            {name:'Fatalitete',color:'#b42318',data:offSeries('fatalities')},
+          ]})}
+          <div class="flex-c gap-16 mt-10">${chartLegend([{color:'#0b1f3a',label:'Aksidente'},{color:'#b42318',label:'Fatalitete'}])}</div></div>
+        </div>
+        <div class="card">
+          ${cardHead('Shkaku i Aksidentit')}
+          <div class="card-pad donut-wrap">
+            ${donut(OFFICIAL.causes.map((c,i)=>({val:c.pct,color:causeCols[i],label:c.label})),{center:'100',sub:'%',size:140})}
+            <div class="donut-side">${OFFICIAL.causes.slice(0,5).map((c,i)=>`<div class="scorebar-row">
+              <span class="sb-name">${c.label}</span><span class="sb-track"><i style="width:${c.pct}%;background:#13315c"></i></span><span class="sb-num">${c.pct}%</span>
+            </div>`).join('')}</div>
           </div>
         </div>
       </div>
-    </div>
-
-    <div class="grid g2 mt-20">
-      <div class="card">
-        <div class="card-head"><h5>Ndryshimi vjetor (%)</h5><span class="hint">2021-2025</span></div>
-        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Viti</th><th class="num">Fatalitete</th><th class="num">Të aksidentuar</th><th class="num">Aksidente</th></tr></thead><tbody>
-          ${OFFICIAL.yoy.filter(y=>y.year>=2021).map(y=>`<tr>
-            <td>${y.year}</td><td class="num">${yoyCell(y.fatalities)}</td>
-            <td class="num">${yoyCell(y.injured)}</td><td class="num">${yoyCell(y.accidents)}</td></tr>`).join('')}
-        </tbody></table></div>
+      <div class="card-grid-stats-row">
+        <div class="card">
+          ${cardHead('Ndryshimi Vjetor')}
+          <div class="tbl-wrap"><table class="tbl tbl-pro"><thead><tr><th>Viti</th><th class="num">Fatalitete</th><th class="num">Aksidente</th></tr></thead><tbody>
+            ${OFFICIAL.yoy.filter(y=>y.year>=2021).map(y=>`<tr><td>${y.year}</td><td class="num">${yoyCell(y.fatalities)}</td><td class="num">${yoyCell(y.accidents)}</td></tr>`).join('')}
+          </tbody></table></div>
+        </div>
+        <div class="card">
+          ${cardHead('Aksidente sipas Qarkut')}
+          <div class="card-pad">${barChart({h:180,labels:q25.slice(0,8).map(q=>q[0]),data:q25.slice(0,8).map(q=>q[1]),color:'#13315c'})}</div>
+        </div>
       </div>
-      <div class="card">
-        <div class="card-head"><h5>Vëzhgime kryesore</h5></div>
-        <div class="card-pad"><ul class="obs-list">
-          ${OFFICIAL.observations.map(o=>`<li>${o}</li>`).join('')}
-        </ul></div>
-      </div>
-    </div>
-
-    <div class="grid g2 mt-20">
-      <div class="card">
-        <div class="card-head"><h5>Aksidente sipas qarkut</h5><span class="hint">${latest.year}</span></div>
-        <div class="card-pad">${barChart({h:220,labels:q25.slice(0,8).map(q=>q[0]),data:q25.slice(0,8).map(q=>q[1]),color:CHART_COL.navy})}</div>
-      </div>
-      <div class="card">
-        <div class="card-head"><h5>Fatalitete sipas ditës së javës</h5><span class="hint">${OFFICIAL.period}</span></div>
-        <div class="card-pad">${barChart({h:220,labels:OFFICIAL.fatalitiesByWeekday.map(d=>d.label),data:OFFICIAL.fatalitiesByWeekday.map(d=>d.val),color:CHART_COL.red})}</div>
-      </div>
-    </div>
-
-    ${sectionDivider('Vlerësimi i rrjetit','Prioritetet sipas nivelit të riskut','<span class="data-tag model">Model</span>')}
-
-    <div class="grid grid-kpi">
-      ${kpi({label:'Pikat e Zeza',val:NAT.blackSpots,ico:'alert',tone:'red'})}
-      ${kpi({label:'Në zhvillim',val:NAT.emerging,ico:'trend',tone:'amber'})}
-      ${kpi({label:'Risk i lartë',val:NAT.highRisk,ico:'layers',tone:'amber',sub:'nivel 4–5'})}
-      ${kpi({label:'Risk mesatar',val:NAT.avgClass,unit:'/5',ico:'shield'})}
-    </div>
-
-    <div class="grid g2 mt-20">
-      <div class="card">
-        <div class="card-head"><h5>Segmentet prioritare</h5><div class="right"><a class="btn sm" href="#/segments">Të gjitha</a></div></div>
-        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Segment</th><th>Bashkia</th><th class="num">Aks.</th><th class="num">Fat.</th><th>Rruga</th><th>Historiku</th><th>Niveli i riskut</th></tr></thead><tbody>
-          ${topSeg.map((s,i)=>`<tr class="clickable" onclick="location.hash='#/segment/${s.id}'">
-            <td><span class="rank ${i<3?'t'+(i+1):''}">${i+1}</span></td>
-            <td><span class="strong">${escapeHtml(shortRoad(s))}</span><br><span class="cell-sub">${s.id}</span></td>
-            <td>${s.municipality}</td><td class="num">${s.m.n}</td>
-            <td class="num num-fatal">${s.m.fatalities}</td>
-            <td>${nwaSubBadge(s.nwa.proactive.cls,'pro')}</td>
-            <td>${nwaSubBadge(s.nwa.reactive.cls,'rea')}</td>
-            <td>${nwaCell(s.nwa)}</td></tr>`).join('')}
-        </tbody></table></div>
-      </div>
-      <div class="card card-map">
-        <div class="card-head"><h5>Harta e riskut</h5><div class="right"><a class="btn sm" href="#/risk-map">Hap hartën</a></div></div>
-        <div class="map-shell map-pro"><div id="mapMain"></div></div>
-      </div>
-    </div>
+      <div class="card-grid-stats-row mt-16">
+        <div class="card">
+          ${cardHead('Model Territorial · 2021-2025')}
+          <div class="card-pad"><div class="kv-list kv-list--compact">
+            <div class="kv-row"><span class="k">Aksidente</span><span class="v">${fmt.n(NAT.totAcc)}</span></div>
+            <div class="kv-row"><span class="k">Të lënduar</span><span class="v">${fmt.n(NAT.totInjured)}</span></div>
+            <div class="kv-row"><span class="k">Alkool (model)</span><span class="v">${NAT.alcoholPct}%</span></div>
+            <div class="kv-row"><span class="k">Për NWA (2023-25)</span><span class="v">${fmt.n(NAT.nwaWindow)}</span></div>
+            <div class="kv-row"><span class="k">Kohë mes. reagimi</span><span class="v">${NAT.avgResp} min</span></div>
+            <div class="kv-row"><span class="k">Rrjeti demo</span><span class="v">${NAT.segments} seg · ${fmt.n(NAT.networkKm)} km</span></div>
+          </div></div>
+        </div>
+        <div class="card">
+          ${cardHead('Lloji i Viktimës (model)')}
+          <div class="card-pad">${barChart({h:180,labels:Object.keys(NAT.victimMix).slice(0,6),data:Object.entries(NAT.victimMix).sort((a,b)=>b[1]-a[1]).slice(0,6).map(x=>x[1]),color:'#475569'})}</div>
+        </div>
+        <div class="card">
+          ${cardHead('Aksidente sipas Ditës (model)')}
+          <div class="card-pad">${barChart({h:180,labels:['E hën','E mart','E mër','E enj','E pre','E sht','E die'],data:['E hën','E mart','E mërkur','E enjte','E premte','E shtun','E diel'].map(d=>NAT.weekdayMix[d]||0),color:'#64748b'})}</div>
+        </div>
+      </div>`,'zone-stats')}
   </div>`;
-  setTimeout(()=>initRiskSummaryMap(),30);
+  bindDashStrip();
+  setTimeout(()=>initRiskSummaryMap(),80);
+}
+function bindDashStrip(){
+  view().querySelectorAll('[data-dash-filter]').forEach(el=>{
+    el.addEventListener('click',e=>{
+      e.preventDefault();
+      const f=el.dataset.dashFilter;
+      segFilter.q=''; segFilter.qark='all'; segFilter.roadType='all'; segFilter.sort='priority';
+      if(f==='blackspot'){ segFilter.status='blackspot'; segFilter.tier='all'; }
+      else if(f==='emerging'){ segFilter.status='emerging'; segFilter.tier='all'; }
+      else if(f==='high'){ segFilter.status='all'; segFilter.tier='4'; segFilter.sort='nwa'; }
+      else { segFilter.status='all'; segFilter.tier='all'; }
+      location.hash='#/segments';
+    });
+  });
 }
 function initRiskSummaryMap(){
   _map=baseMap('mapMain',[41.0,19.9],7);
   SEGS.forEach(s=>riskSegmentMarker(s).addTo(_map));
   fitAlbania();
+  setTimeout(()=>{ if(_map&&_map.invalidateSize) _map.invalidateSize(); },150);
 }
 
 function riskSegmentMarker(seg,opts={}){
@@ -303,13 +393,10 @@ function riskSegmentMarker(seg,opts={}){
 }
 
 function renderRiskMap(){
-  view().innerHTML=`<div class="view-pad fade-in map-view">
-    <div class="page-head map-head">
-      <h3>Harta e Riskut</h3>
-      <p>${NAT.segments} segmente · ${NAT.blackSpots} pika të zeza</p>
-    </div>
-    <div class="map-shell map-pro map-full"><div id="mapMain"></div>
-      <div class="map-panel map-title">Shqipëria<span>Niveli i riskut 1–5</span></div>
+  view().innerHTML=`<div class="view-pad page-shell fade-in map-view page-map">
+    ${pageHead('risk-map',`${NAT.segments} segmente`,[{kind:'model',tag:'Aksidente & harta'},{kind:'nwa',tag:'Niveli i riskut'}])}
+    ${pageZone('Harta interaktive',`<div class="map-shell map-full"><div id="mapMain"></div>
+      <div class="map-panel map-title">Shqipëria<span>Niveli i riskut 1-5</span></div>
       <div class="map-panel map-layers">
         <h6>Shtresat</h6>
         <label class="layer-row"><input type="checkbox" id="lyHeat" checked> Dendësia</label>
@@ -323,11 +410,13 @@ function renderRiskMap(){
         <div class="risk-gradient-bar"></div>
         ${riskLegendHTML()}
       </div>
-    </div>
+    </div>`,'zone-map')}
   </div>`;
-  setTimeout(initFullMap,30);
+  setTimeout(initFullMap,80);
 }
 function initFullMap(){
+  const el=document.getElementById('mapMain');
+  if(!el) return;
   _map=baseMap('mapMain',[41.0,19.9],7);
   const layers={};
   const heatPts=ACCIDENTS.map(a=>[a.lat,a.lng,a.fatalities>0?1.2:0.45]);
@@ -349,6 +438,7 @@ function initFullMap(){
   const bind=(id,layer)=>{const el=document.getElementById(id);if(!el)return;el.addEventListener('change',()=>{el.checked?layer.addTo(_map):_map.removeLayer(layer);});};
   bind('lyHeat',layers.heat);bind('lyAcc',layers.acc);bind('lyFat',layers.fat);bind('lyRisk',layers.risk);bind('lyBs',layers.bs);bind('lyEm',layers.em);
   fitAlbania();
+  setTimeout(()=>{ if(_map&&_map.invalidateSize) _map.invalidateSize(); },150);
 }
 
 /* ================================================================
@@ -368,19 +458,33 @@ function segStatusBadge(s){
 }
 function segGuideCard(o){
   const active=segFilter.status===o.filter?' active':'';
-  const rules=Array.isArray(o.rules)?o.rules:[o.rules];
-  return `<button type="button" class="status-guide ${o.tier}${active}" data-seg-filter="${o.filter}" title="Filtro: ${o.title}">
-    <div class="sg-top">
-      <span class="sg-icon" aria-hidden="true">${o.icon}</span>
-      <div class="sg-title-wrap">
-        <h5>${o.title}</h5>
-        <span class="sg-level">${o.level}</span>
-      </div>
-      <span class="sg-count tnum">${o.count}</span>
-    </div>
-    <ul class="sg-rules">${rules.map(r=>`<li>${r}</li>`).join('')}</ul>
-    <div class="sg-tags">${o.tags.map(t=>`<span class="sg-tag">${t}</span>`).join('')}</div>
+  const tone={blackspot:'fatal',emerging:'warn',monitor:'info'}[o.filter]||'';
+  return `<button type="button" class="status-guide${tone?' status-guide--'+tone:''}${active}" data-seg-filter="${o.filter}" title="Filtro: ${o.title}">
+    <span class="sg-title">${o.title}</span>
+    <span class="sg-count tnum">${o.count}</span>
   </button>`;
+}
+const STATUS_SVG={};
+function segFilterPills(){
+  const items=[
+    {v:'all',l:'Të gjitha',n:NAT.segments},
+    {v:'blackspot',l:'Pika e Zezë',n:NAT.blackSpots},
+    {v:'emerging',l:'Në zhvillim',n:NAT.emerging},
+    {v:'monitor',l:'Në vëzhgim',n:NAT.monitor},
+  ];
+  return `<div class="filter-pills" id="segPills">${items.map(i=>`<button type="button" class="filter-pill${segFilter.status===i.v?' active':''}" data-status="${i.v}">${i.l}<span class="fp-n">${i.n}</span></button>`).join('')}</div>`;
+}
+function bindSegFilterPills(){
+  document.querySelectorAll('#segPills .filter-pill').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      segFilter.status=btn.dataset.status;
+      const sel=document.getElementById('segStatus');
+      if(sel) sel.value=segFilter.status;
+      document.querySelectorAll('#segPills .filter-pill').forEach(b=>b.classList.toggle('active',b.dataset.status===segFilter.status));
+      syncSegGuideActive();
+      renderSegTable();
+    });
+  });
 }
 function bindSegGuideFilters(){
   document.querySelectorAll('[data-seg-filter]').forEach(btn=>{
@@ -390,34 +494,37 @@ function bindSegGuideFilters(){
       const sel=document.getElementById('segStatus');
       if(sel) sel.value=segFilter.status;
       document.querySelectorAll('.status-guide').forEach(b=>b.classList.toggle('active',b.dataset.segFilter===segFilter.status));
+      document.querySelectorAll('#segPills .filter-pill').forEach(b=>b.classList.toggle('active',b.dataset.status===segFilter.status));
       renderSegTable();
     });
   });
 }
 function renderSegments(){
+  if(segFilter.status==='watch') segFilter.status='monitor';
   const roadTypes=Object.entries(NWA_TYPES).map(([k,v])=>({key:k,label:v.label}));
   const qarks=[...new Set(SEGS.map(s=>s.qark))].sort();
-  const watch=NAT.emerging+NAT.monitor;
-  view().innerHTML=`<div class="view-pad fade-in">
-    <div class="page-head"><h3>Segmentet Rrugore</h3><p>${NAT.segments} segmente - pika të zeza, në zhvillim, në vëzhgim dhe rrjeti i plotë.</p></div>
-    <div class="grid g3 mt-20 status-guide-grid">
-      ${segGuideCard({tier:'bs',icon:'!',title:'Pika e Zezë',count:NAT.blackSpots,level:'Veprim i menjëhershëm',filter:'blackspot',rules:NWA_BLACK_SPOT_RULES.blackSpot,tags:['Niveli 4–5','Shumë aksidente','Prioritet maksimal']})}
-      ${segGuideCard({tier:'em',icon:'↗',title:'Në zhvillim',count:NAT.emerging,level:'Kandidat për escalim',filter:'emerging',rules:[NWA_BLACK_SPOT_RULES.emerging],tags:['Niveli 3','Jo pikë e zezë','Prioritet i lartë']})}
-      ${segGuideCard({tier:'mon',icon:'◎',title:'Në vëzhgim',count:NAT.monitor,level:'Monitorim aktiv',filter:'monitor',rules:[NWA_BLACK_SPOT_RULES.monitor],tags:['Niveli 2','Sinjale mesatare','Vëzhgim']})}
-    </div>
-    <div class="card mt-20 seg-list-card">
-      <div class="card-head seg-list-top">
-        <h5>Lista e segmenteve</h5>
-        <span class="hint" id="segCountHint"></span>
+  view().innerHTML=`<div class="view-pad page-shell fade-in page-segments">
+    ${pageHead('segments',`${NAT.segments} segmente`,[{kind:'model',tag:'Regjistri'},{kind:'nwa',tag:'Klasifikimi i riskut'}])}
+
+    ${pageZone('Klasifikimi',`<div class="grid g3 status-guide-grid">
+      ${segGuideCard({title:'Pika e Zezë',count:NAT.blackSpots,filter:'blackspot'})}
+      ${segGuideCard({title:'Në Zhvillim',count:NAT.emerging,filter:'emerging'})}
+      ${segGuideCard({title:'Në Vëzhgim',count:NAT.monitor,filter:'monitor'})}
+    </div>`,'zone-classify')}
+
+    ${pageZone('Regjistri',`<div class="card seg-list-card">
+      ${cardHeadCount('Lista e Segmenteve','segCountHint')}
+      ${riskLegendBar()}
+      <div class="card-pad" style="padding-bottom:0">
+        ${segFilterPills()}
       </div>
       <div class="seg-filter-bar">
         <input class="inp seg-search-inp" id="segSearch" placeholder="Kërko…" value="${escapeHtml(segFilter.q)}">
         <select class="inp seg-filter-sel" id="segStatus" title="Statusi">
           <option value="all" ${segFilter.status==='all'?'selected':''}>Të gjitha (${NAT.segments})</option>
           <option value="blackspot" ${segFilter.status==='blackspot'?'selected':''}>Pika e Zezë (${NAT.blackSpots})</option>
-          <option value="watch" ${segFilter.status==='watch'?'selected':''}>Në vëzhgim (${watch})</option>
           <option value="emerging" ${segFilter.status==='emerging'?'selected':''}>Në zhvillim (${NAT.emerging})</option>
-          <option value="monitor" ${segFilter.status==='monitor'?'selected':''}>Monitorim (${NAT.monitor})</option>
+          <option value="monitor" ${segFilter.status==='monitor'?'selected':''}>Në vëzhgim (${NAT.monitor})</option>
         </select>
         <select class="inp seg-filter-sel" id="segQark" title="Qarku"><option value="all">Qarku</option>${qarks.map(q=>`<option ${segFilter.qark===q?'selected':''}>${q}</option>`).join('')}</select>
         <select class="inp seg-filter-sel" id="segRoadType" title="Tipi"><option value="all">Tipi rruge</option>${roadTypes.map(t=>`<option value="${t.key}" ${segFilter.roadType===t.key?'selected':''}>${t.label}</option>`).join('')}</select>
@@ -425,9 +532,13 @@ function renderSegments(){
         <select class="inp seg-filter-sel" id="segSort" title="Renditja"><option value="priority" ${segFilter.sort==='priority'?'selected':''}>Prioritet</option><option value="nwa" ${segFilter.sort==='nwa'?'selected':''}>Risku</option><option value="fatalities" ${segFilter.sort==='fatalities'?'selected':''}>Fatalitete</option><option value="accidents" ${segFilter.sort==='accidents'?'selected':''}>Aksidente</option><option value="proactive" ${segFilter.sort==='proactive'?'selected':''}>Rruga</option></select>
       </div>
       <div class="tbl-wrap tbl-scroll seg-tbl-wrap" id="segTblWrap"></div>
-    </div>
+    </div>`,'zone-registry')}
   </div>`;
-  const apply=()=>{ syncSegGuideActive(); renderSegTable(); };
+  const apply=()=>{
+    syncSegGuideActive();
+    document.querySelectorAll('#segPills .filter-pill').forEach(b=>b.classList.toggle('active',b.dataset.status===segFilter.status));
+    renderSegTable();
+  };
   document.getElementById('segSearch').addEventListener('input',e=>{segFilter.q=e.target.value.toLowerCase();apply();});
   document.getElementById('segStatus').addEventListener('change',e=>{segFilter.status=e.target.value;apply();});
   document.getElementById('segQark').addEventListener('change',e=>{segFilter.qark=e.target.value;apply();});
@@ -435,6 +546,7 @@ function renderSegments(){
   document.getElementById('segTier').addEventListener('change',e=>{segFilter.tier=e.target.value;apply();});
   document.getElementById('segSort').addEventListener('change',e=>{segFilter.sort=e.target.value;apply();});
   bindSegGuideFilters();
+  bindSegFilterPills();
   renderSegTable();
 }
 function syncSegGuideActive(){
@@ -445,7 +557,6 @@ function renderSegTable(){
     if(segFilter.status==='blackspot'&&!s.isBlackSpot) return false;
     if(segFilter.status==='emerging'&&!s.isEmerging) return false;
     if(segFilter.status==='monitor'&&!s.isMonitor) return false;
-    if(segFilter.status==='watch'&&!(s.isEmerging||s.isMonitor)) return false;
     if(segFilter.qark!=='all'&&s.qark!==segFilter.qark) return false;
     if(segFilter.roadType!=='all'&&s.nwaType!==segFilter.roadType) return false;
     if(segFilter.tier!=='all'&&String(s.nwa.integrated)!==segFilter.tier) return false;
@@ -458,18 +569,17 @@ function renderSegTable(){
   const hint=document.getElementById('segCountHint');
   if(hint) hint.textContent=`${rows.length} segmente`;
   if(!wrap) return;
-  wrap.innerHTML=rows.length?`<table class="tbl seg-tbl"><thead><tr>
-    <th class="col-rank">#</th><th>Segment</th><th>Statusi</th><th class="col-causes">Pse ndodhën</th><th>Bashkia / Qark</th><th class="col-risk">Risku</th><th class="num">Aks.</th><th class="num">Fat.</th><th>Trendi</th>
+  wrap.innerHTML=rows.length?`<table class="tbl tbl-pro seg-tbl"><thead><tr>
+    <th class="col-rank">#</th><th>Segment</th><th>Statusi</th><th class="col-risk-viz">Niveli i riskut</th><th class="col-causes">Shkaku</th><th class="num">Aks.</th><th class="num">Fat.</th><th>Trendi</th>
   </tr></thead><tbody>
-  ${rows.map((s,i)=>`<tr class="clickable seg-tr-${segStatusTier(s)}" onclick="location.hash='#/segment/${s.id}'" title="Hap profilin e segmentit">
+  ${rows.map((s,i)=>`<tr class="clickable seg-tr-${segStatusTier(s)}" onclick="location.hash='#/segment/${s.id}'" title="Hap profilin">
     <td class="col-rank"><span class="rank ${i<3?'t'+(i+1):''}">${i+1}</span></td>
-    <td class="col-seg"><span class="strong">${escapeHtml(shortRoad(s))}</span><span class="cell-sub">${s.id} · km ${s.kmFrom}–${s.kmTo}</span></td>
+    <td class="col-seg"><span class="strong">${escapeHtml(shortRoad(s))}</span><span class="cell-sub">${s.municipality} · km ${s.kmFrom}-${s.kmTo}</span></td>
     <td class="col-status">${segStatusBadge(s)}</td>
+    <td class="col-risk-viz">${nwaCell(s.nwa)}</td>
     <td class="col-causes">${segCausesCell(s)}</td>
-    <td>${s.municipality}<span class="cell-sub">${s.qark}</span></td>
-    <td class="col-risk">${nwaCell(s.nwa)}</td>
     <td class="num"><b>${s.m.n}</b></td>
-    <td class="num num-fatal"><b>${s.m.fatalities||'-'}</b></td>
+    <td class="num">${toneFatal(s.m.fatalities,'-')}</td>
     <td>${trendChip(s.trend)}</td>
   </tr>`).join('')}
   </tbody></table>`
@@ -477,13 +587,209 @@ function renderSegTable(){
 }
 
 /* ================================================================
+   4. ACCIDENT REGISTRY
+   ================================================================ */
+const CAUSE_BY_KEY=Object.fromEntries(CAUSES.map(c=>[c.key,c]));
+function accCauseLabel(key){ return CAUSE_BY_KEY[key]?.short||CAUSE_BY_KEY[key]?.label||key||'-'; }
+function accNwaLegend(){
+  return `<div class="risk-legend-bar acc-nwa-legend" role="note">
+    <span><b>Për riskun · Po</b> - llogaritet në NWA (${DATA_PERIODS.nwa.label}): vdekje, lëndim i rëndë ose ashpërsi ≥3</span>
+    <span><b>Jo</b> - nuk hyn në historikun reaktiv (vetëm material ose jashtë dritares)</span>
+    <span><b>Risk</b> - niveli aktual 1-5 i segmentit</span>
+  </div>`;
+}
+function accCountsForNwa(a){
+  if(a.countsForNwa!=null) return a.countsForNwa;
+  return NWA_REACTIVE_WINDOW.includes(a.year)&&(a.fatalities>0||a.serious_injuries>0||a.severity>=3);
+}
+function accSegRisk(a){
+  const s=SEGS.find(x=>x.id===a.segment);
+  return s?s.nwa.integrated:null;
+}
+
+let accFilter={q:'',year:'2025',qark:'all',severity:'all',fatal:'all',sort:'date'};
+const ACC_PAGE_SIZE=150;
+let accPage=1;
+function renderAccidents(){
+  const qarks=[...new Set(ACCIDENTS.map(a=>a.qark))].sort();
+  view().innerHTML=`<div class="view-pad page-shell fade-in page-accidents">
+    ${pageHead('accidents',null,[{kind:'model',tag:'Kalibruar INSTAT · default 2025'}])}
+
+    ${pageZone('Regjistri',`<div class="card acc-list-card">
+      ${cardHeadCount('Lista e Aksidenteve','accCountHint',`<button type="button" class="btn sm ghost" id="accCsv">Eksporto CSV</button>`)}
+      ${accNwaLegend()}
+      <div class="card-pad" style="padding-bottom:0">
+        <div class="filter-pills" id="accYearPills">
+          <button type="button" class="filter-pill${accFilter.year==='all'?' active':''}" data-year="all">Të gjitha<span class="fp-n">${ACCIDENTS.length}</span></button>
+          ${YEARS.map(y=>`<button type="button" class="filter-pill${accFilter.year===String(y)?' active':''}" data-year="${y}">${y}<span class="fp-n">${ACCIDENTS.filter(a=>a.year===y).length}</span></button>`).join('')}
+        </div>
+      </div>
+      <div class="seg-filter-bar acc-filter-bar">
+        <input class="inp seg-search-inp" id="accSearch" placeholder="Kërko ID, rrugë, bashki, segment…" value="${escapeHtml(accFilter.q)}">
+        <select class="inp seg-filter-sel" id="accQark" title="Qarku"><option value="all">Qarku</option>${qarks.map(q=>`<option ${accFilter.qark===q?'selected':''}>${q}</option>`).join('')}</select>
+        <select class="inp seg-filter-sel" id="accSeverity" title="Ashpërsia">
+          <option value="all">Ashpërsia</option>
+          <option value="4" ${accFilter.severity==='4'?'selected':''}>Fatal</option>
+          <option value="3" ${accFilter.severity==='3'?'selected':''}>Lëndime të rënda</option>
+          <option value="2" ${accFilter.severity==='2'?'selected':''}>Lëndime të lehta</option>
+          <option value="1" ${accFilter.severity==='1'?'selected':''}>Vetëm material</option>
+        </select>
+        <select class="inp seg-filter-sel" id="accFatal" title="Fatalitete">
+          <option value="all">Fatalitete</option>
+          <option value="yes" ${accFilter.fatal==='yes'?'selected':''}>Me vdekje</option>
+          <option value="no" ${accFilter.fatal==='no'?'selected':''}>Pa vdekje</option>
+        </select>
+        <select class="inp seg-filter-sel" id="accSort" title="Renditja">
+          <option value="date" ${accFilter.sort==='date'?'selected':''}>Data (më i fundit)</option>
+          <option value="severity" ${accFilter.sort==='severity'?'selected':''}>Ashpërsia</option>
+          <option value="fatalities" ${accFilter.sort==='fatalities'?'selected':''}>Fatalitete</option>
+        </select>
+        <button type="button" class="btn sm ghost" id="accReset">Hiq filtrat</button>
+      </div>
+      <div class="acc-tbl-scroll" id="accTblWrap"></div>
+    </div>`,'zone-registry')}
+  </div>`;
+
+  const apply=()=>{
+    accPage=1;
+    document.querySelectorAll('#accYearPills .filter-pill').forEach(b=>b.classList.toggle('active',b.dataset.year===accFilter.year));
+    renderAccTable();
+  };
+  document.getElementById('accSearch').addEventListener('input',e=>{accFilter.q=e.target.value.toLowerCase();apply();});
+  document.getElementById('accQark').addEventListener('change',e=>{accFilter.qark=e.target.value;apply();});
+  document.getElementById('accSeverity').addEventListener('change',e=>{accFilter.severity=e.target.value;apply();});
+  document.getElementById('accFatal').addEventListener('change',e=>{accFilter.fatal=e.target.value;apply();});
+  document.getElementById('accSort').addEventListener('change',e=>{accFilter.sort=e.target.value;apply();});
+  document.querySelectorAll('#accYearPills .filter-pill').forEach(btn=>{
+    btn.addEventListener('click',()=>{accFilter.year=btn.dataset.year;apply();});
+  });
+  document.getElementById('accCsv')?.addEventListener('click',exportAccCSV);
+  document.getElementById('accReset')?.addEventListener('click',()=>{
+    accFilter={q:'',year:'2025',qark:'all',severity:'all',fatal:'all',sort:'date'};
+    document.getElementById('accSearch').value='';
+    document.getElementById('accQark').value='all';
+    document.getElementById('accSeverity').value='all';
+    document.getElementById('accFatal').value='all';
+    document.getElementById('accSort').value='date';
+    apply();
+  });
+  apply();
+}
+function renderAccTable(){
+  let rows=ACCIDENTS.filter(a=>{
+    if(accFilter.year!=='all'&&String(a.year)!==accFilter.year) return false;
+    if(accFilter.qark!=='all'&&a.qark!==accFilter.qark) return false;
+    if(accFilter.severity!=='all'&&String(a.severity)!==accFilter.severity) return false;
+    if(accFilter.fatal==='yes'&&!(a.fatalities>0)) return false;
+    if(accFilter.fatal==='no'&&a.fatalities>0) return false;
+    if(accFilter.q){
+      const hay=(a.id+' '+a.road+' '+a.roadName+' '+a.segment+' '+a.municipality+' '+a.qark+' '+a.collision_type+' '+a.driver_factor).toLowerCase();
+      if(!hay.includes(accFilter.q)) return false;
+    }
+    return true;
+  });
+  const sk=accFilter.sort;
+  rows.sort((a,b)=> sk==='severity'?b.severity-a.severity||b.date-a.date : sk==='fatalities'?b.fatalities-a.fatalities||b.date-a.date : b.date-a.date);
+  const totalPages=Math.max(1,Math.ceil(rows.length/ACC_PAGE_SIZE));
+  if(accPage>totalPages) accPage=totalPages;
+  if(accPage<1) accPage=1;
+  const pageRows=rows.slice((accPage-1)*ACC_PAGE_SIZE,accPage*ACC_PAGE_SIZE);
+  const wrap=document.getElementById('accTblWrap');
+  const hint=document.getElementById('accCountHint');
+  const yrStats=accFilter.year==='all'?{n:rows.length,fat:rows.reduce((s,a)=>s+a.fatalities,0)}:modelYearStats(Number(accFilter.year));
+  const offYr=accFilter.year!=='all'?OFFICIAL.yearly.find(y=>y.year===Number(accFilter.year)):null;
+  if(hint) hint.textContent=accFilter.year==='all'
+    ?`${rows.length} aksidente · ${periodLine('model')}`
+    :`${rows.length} aksidente · ${yrStats.fat} fatalitete · ${yrStats.inj||rows.reduce((s,a)=>s+(a.injured||0),0)} lënduar · INSTAT ${offYr?offYr.accidents:''}/${offYr?offYr.fatalities:''}/${offYr?offYr.injured:''}`;
+  if(!wrap) return;
+  const pager=rows.length>ACC_PAGE_SIZE?`<div class="acc-pager">
+    <button type="button" class="btn sm ghost" id="accPrev" ${accPage<=1?'disabled':''}>← Mbrapa</button>
+    <span class="acc-pager-info">Faqja ${accPage} / ${totalPages} · ${pageRows.length} rreshta</span>
+    <button type="button" class="btn sm ghost" id="accNext" ${accPage>=totalPages?'disabled':''}>Para →</button>
+  </div>`:'';
+  wrap.innerHTML=rows.length?`${pager}<table class="tbl tbl-pro acc-tbl"><thead><tr>
+    <th class="col-id-freeze">ID</th><th class="num col-risk-freeze" title="Niveli i riskut të segmentit 1-5">Risk</th><th class="col-nwa-freeze" title="A llogaritet në historikun reaktiv NWA?">Për riskun</th>
+    <th>Data</th><th>Dita</th><th>Ora</th><th>Viti</th>
+    <th>Segment</th><th>Rruga</th><th>Bashkia</th><th>Qarku</th><th>Tipi rruge</th>
+    <th>Lloji aksidentit</th><th>Ashpërsia</th>
+    <th class="num">Fat.</th><th class="num">L. rënda</th><th class="num">L. lehta</th><th class="num">Lënduar</th>
+    <th>Viktima</th><th>Alk.</th>
+    <th class="num">Mjete</th><th class="num">Këmb.</th>
+    <th>Moti</th><th>Ndriçimi</th><th>Sipërfaqja</th>
+    <th class="num">Limit</th><th class="num">km/h</th>
+    <th>Shoferi</th><th>Infrastruktura</th><th>Automjeti</th>
+    <th>Shkaku</th><th>Shkaku zyrt.</th><th class="num">Përgj. min</th>
+    <th>ID Policia</th>
+  </tr></thead><tbody>
+  ${pageRows.map(a=>{
+    const nwaOn=accCountsForNwa(a);
+    const rLevel=accSegRisk(a);
+    return `<tr class="clickable" onclick="location.hash='#/segment/${a.segment}'" title="Hap segmentin ${a.segment}">
+    <td class="mono cell-id col-id-freeze">${a.id}</td>
+    <td class="num col-risk-freeze">${rLevel!=null?`<span class="acc-risk-lvl" style="--c:${riskLevelColor(rLevel)}">${rLevel}</span>`:'-'}</td>
+    <td class="col-nwa-freeze" title="${nwaOn?'Llogaritet në NWA ('+DATA_PERIODS.nwa.label+')':'Nuk llogaritet në historikun reaktiv NWA'}">${nwaOn?'<span class="badge badge-warn">Po</span>':'<span class="badge neutral">Jo</span>'}</td>
+    <td>${fmt.dateShort(a.date)}</td>
+    <td class="cell-meta">${a.weekday||'-'}</td>
+    <td class="tnum">${a.time}</td>
+    <td class="tnum">${a.year}</td>
+    <td class="mono cell-id">${a.segment}</td>
+    <td><span class="strong">${escapeHtml(a.road)}</span></td>
+    <td>${a.municipality}</td>
+    <td>${a.qark}</td>
+    <td class="cell-meta">${a.roadType}</td>
+    <td class="cell-meta">${escapeHtml(a.collision_type)}</td>
+    <td><span class="badge ${a.severity===4?'badge-fatal':a.severity>=3?'badge-warn':'neutral'}">${a.severityLabel}</span></td>
+    <td class="num">${toneFatal(a.fatalities,'0')}</td>
+    <td class="num">${a.serious_injuries||0}</td>
+    <td class="num">${a.minor_injuries||0}</td>
+    <td class="num">${a.injured||0}</td>
+    <td class="cell-meta">${a.victim_type||'-'}</td>
+    <td>${a.alcohol_involved?'<span class="badge badge-warn">Po</span>':'<span class="badge neutral">Jo</span>'}</td>
+    <td class="num">${a.vehicles}</td>
+    <td class="num">${a.pedestrians||0}</td>
+    <td class="cell-meta">${a.weather}</td>
+    <td class="cell-meta">${a.lighting}</td>
+    <td class="cell-meta">${a.road_condition}</td>
+    <td class="num">${a.speed_limit}</td>
+    <td class="num">${a.estimated_speed}</td>
+    <td class="cell-meta">${escapeHtml(a.driver_factor)}</td>
+    <td class="cell-meta">${escapeHtml(a.infrastructure_factor)}</td>
+    <td class="cell-meta">${escapeHtml(a.vehicle_factor)}</td>
+    <td>${accCauseLabel(a.dominantCause)}</td>
+    <td class="cell-meta">${escapeHtml(a.officialCause||'-')}</td>
+    <td class="num">${a.response_time}</td>
+    <td class="mono cell-meta">${a.policeId||'-'}</td>
+  </tr>`;}).join('')}
+  </tbody></table>`
+    :`<div class="empty" style="padding:32px"><p>Asnjë aksident nuk përputhet me kriteret.</p></div>`;
+  document.getElementById('accPrev')?.addEventListener('click',()=>{ if(accPage>1){ accPage--; renderAccTable(); }});
+  document.getElementById('accNext')?.addEventListener('click',()=>{ if(accPage<totalPages){ accPage++; renderAccTable(); }});
+}
+function exportAccCSV(){
+  const table=document.querySelector('.acc-tbl');
+  if(!table) return;
+  downloadCSV('regjistri-aksidenteve-'+DATA_PERIODS.model.label.replace(/-/g,'-')+'.csv',tableToCSV(table));
+}
+
+/* ================================================================
    5. SEGMENT PROFILE (full report page)
    ================================================================ */
 function segCausesCell(s){
-  if(!s.causes?.length) return '<span class="cell-meta">—</span>';
-  const top=s.causes.slice(0,2);
-  const more=s.causes.length-top.length;
-  return `<div class="seg-cause-list">${top.map(c=>`<span class="seg-cause-chip" title="${escapeHtml(c.summary)}">${c.shortLabel} <b>${c.count}</b></span>`).join('')}${more?`<span class="seg-cause-more">+${more}</span>`:''}</div>`;
+  if(!s.causes?.length) return '<span class="cell-meta">-</span>';
+  const top=s.causes[0];
+  const more=s.causes.length-1;
+  return `<span class="seg-cause-primary" title="${escapeHtml(s.causes.map(c=>c.shortLabel+' ('+c.count+')').join(', '))}">${top.shortLabel} <b>${top.count}</b></span>${more?`<span class="seg-cause-more">+${more}</span>`:''}`;
+}
+function renderCausesBars(s){
+  if(!s.causes.length) return '<p class="prose muted">Pa aksidente të regjistruara.</p>';
+  const max=s.causes[0]?.count||1;
+  return `<div class="cause-bars">${s.causes.map(c=>`<div class="cause-bar-row">
+    <div class="cbr-head">
+      <span class="cbr-name">${c.label}</span>
+      <span class="cbr-meta">${c.count} · ${c.contribution}%</span>
+    </div>
+    <div class="cbr-track"><i style="width:${Math.round(c.count/max*100)}%"></i></div>
+  </div>`).join('')}</div>`;
 }
 function renderCausesTable(s){
   if(!s.causes.length) return '<p class="prose muted">Pa aksidente në historik.</p>';
@@ -493,7 +799,7 @@ function renderCausesTable(s){
     <td class="cause-name" title="${escapeHtml(c.desc||'')}">${c.label}${c.desc?`<span class="cause-hint" title="${escapeHtml(c.desc)}">?</span>`:''}</td>
     <td class="num"><b>${c.count}</b></td>
     <td class="num">${c.contribution}%</td>
-    <td class="num num-fatal">${c.fatalCount||'—'}</td>
+    <td class="num num-fatal">${c.fatalCount||'-'}</td>
     <td class="cause-hist">
       <div class="cause-tags">${c.tags.map(t=>`<span class="cause-tag">${escapeHtml(t)}</span>`).join('')}</div>
       ${c.example?`<span class="cause-ex">${escapeHtml(c.example)}</span>`:''}
@@ -502,120 +808,121 @@ function renderCausesTable(s){
 }
 function renderSegmentProfile(id){
   const s=SEGS.find(x=>x.id===id);
-  if(!s){ view().innerHTML=`<div class="view-pad"><div class="empty"><p>Segmenti nuk u gjet.</p><a class="btn mt-16" href="#/segments">Kthehu te segmentet</a></div></div>`; return; }
+  if(!s){ view().innerHTML=`<div class="view-pad"><div class="empty"><p>Segmenti nuk u gjet.</p><a class="btn mt-16" href="#/segments">Kthehu te regjistri</a></div></div>`; return; }
   document.getElementById('pageTitle').textContent='Profili i Segmentit · '+s.id;
   const m=s.m, nwa=s.nwa;
-  const status=nwaSegmentStatus(s);
   const bsReasons=blackSpotReasons(s);
   const crashes=[...s.accidents].sort((a,b)=>b.date-a.date);
   const ivs=interventionsFor(s,5);
-  const statusBadge=s.isBlackSpot?`<span class="badge crit dot">Pikë e Zezë</span>`:s.isEmerging?`<span class="badge med dot">Në zhvillim</span>`:s.isMonitor?`<span class="badge neutral dot">Në vëzhgim</span>`:nwaBadge(nwa);
+  const statusBadge=s.isBlackSpot?`<span class="badge badge-fatal">Pikë e Zezë</span>`:s.isEmerging?`<span class="badge badge-warn">Në Zhvillim</span>`:s.isMonitor?`<span class="seg-status mon">Në Vëzhgim</span>`:`<span class="badge neutral">${nwa.meta.label}</span>`;
   const rfRows=Object.values(nwa.proactive.rfs);
-  view().innerHTML=`<div class="view-pad fade-in">
-    <a class="btn sm ghost" href="#/segments" style="margin-bottom:14px">← Segmentet</a>
-    <div class="profile-hero">
+  const ev=s.evidence||{};
+  view().innerHTML=`<div class="view-pad page-shell fade-in profile-page page-segment">
+    <a class="btn sm ghost profile-back" href="#/segments">← Regjistri</a>
+    ${periodNotes([{kind:'model',tag:'Aksidente & segment'},{kind:'nwa',tag:'Risku'}])}
+
+    ${pageZone('Vlerësimi',`<div class="profile-hero">
       <div class="ph-top">
-        <div>
-          <div class="flex-c gap-8 ph-badges">${statusBadge}<span class="ph-tag">${s.roadType}</span><span class="ph-tag ph-tag-type">${nwa.typeLabel}</span></div>
-          <h3>${escapeHtml(s.road)}</h3>
+        <div class="ph-info">
+          <div class="flex-c gap-8 ph-badges">${statusBadge}<span class="ph-tag">${s.roadType}</span></div>
+          <h2 class="profile-road">${escapeHtml(s.road)}</h2>
           <div class="ph-meta">
             <span class="ph-chip"><span class="ph-chip-k">ID</span>${s.id}</span>
-            <span class="ph-chip"><span class="ph-chip-k">km</span><b>${s.kmFrom}–${s.kmTo}</b></span>
-            <span class="ph-chip"><span class="ph-chip-k">Vendndodhja</span><b>${s.municipality}</b>, ${s.qark}</span>
-            <span class="ph-chip"><span class="ph-chip-k">AADT</span><b>${fmt.n(s.aadt)}</b></span>
-            <span class="ph-chip"><span class="ph-chip-k">Limit</span><b>${s.speedLimit} km/h</b></span>
+            <span class="ph-chip"><span class="ph-chip-k">km</span><b>${s.kmFrom}-${s.kmTo}</b></span>
+            <span class="ph-chip"><span class="ph-chip-k">${s.municipality}</span></span>
+            <span class="ph-chip"><span class="ph-chip-k">AADT</span>${fmt.n(s.aadt)}</span>
+            <span class="ph-chip"><span class="ph-chip-k">iRAP</span>${s.iRAP||'-'}★</span>
+            <span class="ph-chip"><span class="ph-chip-k">${s.divided?'Me ndarje':'Pa ndarje'}</span></span>
           </div>
         </div>
-        <div class="ph-score ph-score-risk">
-          <div class="n" style="color:${nwaColor(nwa)}">${nwa.integrated}</div>
-          <div class="l">${nwa.meta.label}</div>
+        <div class="ph-kpis">
+          <div class="ph-stat"><span class="ps-val">${m.n}</span><span class="ps-label">Aksidente</span></div>
+          <div class="ph-stat ph-stat--fatal"><span class="ps-val">${m.fatalities}</span><span class="ps-label">Fatalitete</span></div>
+          <div class="ph-stat">${trendChip(s.trend)}</div>
         </div>
       </div>
-    </div>
+    </div>`,'zone-assessment')}
 
-    <div class="grid g4 mt-20">
-      ${kpi({label:'Aksidente (5 vjet)',val:m.n,ico:'car',tone:'navy',sub:`${m.accPerKmYr}/km/vit`})}
-      ${kpi({label:'Fatalitete',val:m.fatalities,ico:'skull',tone:'red',sub:`${m.fatalCrashes} fatale`})}
-      ${kpi({label:'Të lënduar rëndë',val:m.serious,ico:'alert',tone:'amber',sub:`${m.minor} të lehta`})}
-      ${kpi({label:'Statusi',val:status.label,ico:'shield',tone:s.isBlackSpot?'red':s.isEmerging?'amber':'navy'})}
-    </div>
-
-    <div class="grid g2 mt-20" style="grid-template-columns:1fr 1.1fr">
+    ${pageZone('Diagnoza',`<div class="profile-row-2">
       <div class="card">
-        <div class="card-head"><h5>Gjendja e rrugës</h5><span class="hint">${nwa.proactive.score}% · ${nwaSubBadge(nwa.proactive.cls,'pro')}</span></div>
-        <div class="card-pad">
-          <table class="tbl param-tbl"><thead><tr><th>Parametri</th><th class="num">Vlerësimi</th><th class="num">Cilësia</th></tr></thead><tbody>
+        ${cardHead('Shkaktarët')}
+        <div class="card-pad">${renderCausesBars(s)}</div>
+      </div>
+      <div class="card">
+        ${cardHead('Masat e Rekomanduara')}
+        <div class="card-pad stack">
+          ${ivs.slice(0,4).map(iv=>`<div class="action-card">
+            <div class="ac-head"><h6>${iv.measure}</h6><span class="badge neutral">${iv.priority}</span></div>
+          </div>`).join('')||'<p class="prose muted">Pa rekomandime.</p>'}
+        </div>
+      </div>
+    </div>`,'zone-diagnosis')}
+
+    ${pageZone('Risku',`<div class="card profile-risk-card">
+      <div class="card-pad">${riskViz(nwa)}</div>
+      ${s.isBlackSpot?`<div class="profile-bs-block">
+        <span class="alert-k">Pikë e Zezë</span>
+        <ul class="obs-list compact">${bsReasons.map(r=>`<li>${r}</li>`).join('')}</ul>
+      </div>`:''}
+    </div>`,'zone-risk')}
+
+    ${pageZone('Koeficientët',`<div class="card">
+      <div class="card-pad profile-coef-intro">
+        <p class="prose muted">Niveli i riskut llogaritet duke kombinuar <b>gjendjen e rrugës</b> (koeficientët RF të infrastrukturës) me <b>historikun reaktiv</b> të aksidenteve në dritaren ${NWA_REACTIVE_WINDOW.join('-')}.</p>
+      </div>
+      <div class="profile-row-2 profile-coef-grid">
+        <div class="profile-coef-col">
+          <h6 class="sub-block-title">Gjendja e rrugës · ${nwa.proactive.score}%</h6>
+          <div class="tbl-wrap"><table class="tbl param-tbl"><thead><tr><th>Parametri</th><th class="num">RF</th><th class="num">Cilësia</th></tr></thead><tbody>
             ${rfRows.map(r=>`<tr><td>${r.label}</td><td class="num">${r.rf}</td><td class="num">${r.quality}%</td></tr>`).join('')}
-          </tbody></table>
-          <p class="param-note"><b>Si lexohen:</b> <b>Cilësia</b> tregon sa e mirë është elementi (0–100%, më lartë = më sigurt). <b>Vlerësimi</b> është faktori RF (0.55–1.0), i llogaritur nga cilësia. Rezultati i rrugës = 100 × shumëzimi i të gjitha vlerësimeve.</p>
+          </tbody></table></div>
         </div>
-      </div>
-      <div class="card">
-        <div class="card-head"><h5>Historiku i aksidenteve</h5><span class="hint">${NWA_REACTIVE_WINDOW.join('–')} · ${nwaSubBadge(nwa.reactive.cls,'rea')}</span></div>
-        <div class="card-pad">
-          <table class="tbl param-tbl"><thead><tr><th>Treguesi</th><th class="num">Vlera</th></tr></thead><tbody>
+        <div class="profile-coef-col">
+          <h6 class="sub-block-title">Historiku reaktiv · ${NWA_REACTIVE_WINDOW.join('-')}</h6>
+          <div class="tbl-wrap"><table class="tbl param-tbl"><thead><tr><th>Treguesi</th><th class="num">Vlera</th></tr></thead><tbody>
             <tr><td>Aksidente me viktima</td><td class="num"><b>${nwa.reactive.k}</b></td></tr>
-            <tr><td>Densiteti (aks/km/vit)</td><td class="num">${nwa.reactive.crashDensity}</td></tr>
-            <tr><td>Shkalla (për AADT)</td><td class="num">${nwa.reactive.crashRate}</td></tr>
-            <tr><td>Pritshme (krahasim)</td><td class="num">${nwa.reactive.expected}</td></tr>
-          </tbody></table>
+            <tr><td>Densiteti</td><td class="num">${nwa.reactive.crashDensity}</td></tr>
+            <tr><td>Shkalla</td><td class="num">${nwa.reactive.crashRate}</td></tr>
+            <tr><td>Pritshme</td><td class="num">${nwa.reactive.expected}</td></tr>
+            <tr><td>Klasifikimi</td><td class="num">${NWA_REACTIVE_META[nwa.reactive.cls]?.label||nwa.reactive.cls}</td></tr>
+            <tr><td>Metrika</td><td class="num">${nwa.reactive.metricUsed==='crash_rate'?'Shkalla (AADT)':'Densiteti'}</td></tr>
+            <tr><td>p (i lartë)</td><td class="num">${nwa.reactive.pHigh??'-'}%</td></tr>
+            ${nwa.proactive.trafficFiltered?'<tr><td>Filtri trafikut</td><td class="num">p3→p2 (AADT i ulët)</td></tr>':''}
+          </tbody></table></div>
         </div>
       </div>
-    </div>
-
-    <div class="grid g2 mt-20" style="grid-template-columns:1fr 1.1fr">
-      <div class="card">
-        <div class="card-head"><h5>Niveli i riskut</h5><span class="hint">Vlerësim i përgjithshëm</span></div>
-        <div class="card-pad">
-          <p class="prose"><b>${nwa.meta.label}</b> - nga kombinimi i <b>${NWA_PROACTIVE_META[nwa.proactive.cls].label.toLowerCase()}</b> dhe <b>${NWA_REACTIVE_META[nwa.reactive.cls].label.toLowerCase()}</b>.</p>
-          ${nwaBadge(nwa)}
+      ${ev.n?`<div class="card-pad profile-evidence">
+        <h6 class="sub-block-title">Dëshmi nga historiku</h6>
+        <div class="evidence-chips">
+          <span class="ev-chip">${ev.overSpeedPct}% mbi limit</span>
+          <span class="ev-chip">${ev.noLightPct}% natë pa dritë</span>
+          <span class="ev-chip">${ev.wetPct}% sipërfaqe e lagësht</span>
+          <span class="ev-chip">Ambulanca ~${ev.avgResp} min</span>
         </div>
-      </div>
-      <div class="card">
-        <div class="card-head"><h5>${s.isBlackSpot?'Pse është pikë e zezë?':'Përmbledhje'}</h5></div>
-        <div class="card-pad">
-          ${s.isBlackSpot?`<ul class="obs-list">${bsReasons.map(r=>`<li>${r}</li>`).join('')}</ul>`:`<p class="prose">${status.label}.</p>`}
-        </div>
-      </div>
-    </div>
+      </div>`:''}
+      ${s.nwaInspection?`<div class="card-pad profile-inspection note-inline">
+        Inspektim demo: ${fmt.dateShort(s.nwaInspection.date)} · ${escapeHtml(s.nwaInspection.inspector)} · ${escapeHtml(s.nwaInspection.method)}
+      </div>`:''}
+    </div>`,'zone-coef')}
 
-    <div class="card mt-20">
-      <div class="card-head"><h5>Pse ndodhën aksidentet</h5><span class="hint">${segmentRiskNarrative(s)}</span></div>
-      <div class="card-pad">${renderCausesTable(s)}</div>
-    </div>
-
-    <div class="grid g2 mt-20 profile-side-pair" style="grid-template-columns:1fr 1.1fr">
+    ${pageZone('Konteksti',`<div class="profile-row-2">
       <div class="card">
-        <div class="card-head"><h5>Trendi i aksidenteve</h5><span class="hint">${trendChip(s.trend)}</span></div>
-        <div class="card-pad">${lineChart({h:220,labels:YEARS,area:true,series:[{name:'Aksidente',color:CHART_COL.navy,data:m.byYear},{name:'Fatalitete',color:CHART_COL.red,data:m.fatByYear}]})}
-        <div class="flex-c gap-16 mt-12">${chartLegend([{color:CHART_COL.navy,label:'Aksidente'},{color:CHART_COL.red,label:'Fatalitete'}])}</div></div>
+        ${cardHead('Tendenca')}
+        <div class="card-pad mini-trend">${lineChart({h:160,labels:YEARS,area:true,series:[{name:'Aks.',color:'#475569',data:m.byYear},{name:'Fat.',color:'#94a3b8',data:m.fatByYear}]})}</div>
       </div>
       <div class="card card-map">
-        <div class="card-head"><h5>Lokalizimi</h5><span class="hint">${s.municipality}, ${s.qark}</span></div>
-        <div class="map-shell map-pro"><div id="mapMain"></div></div>
+        ${cardHead('Vendndodhja')}
+        <div class="map-shell profile-map"><div id="mapMain"></div></div>
       </div>
-    </div>
+    </div>`,'zone-context')}
 
-    <div class="card mt-20">
-      <div class="card-head"><h5>Veprime të rekomanduara</h5></div>
-      <div class="card-pad stack">
-        ${ivs.map(iv=>`<div class="action-card ${iv.priority==='Kritike'?'crit':iv.priority==='I lartë'?'high':''}">
-          <div class="ac-head"><h6>${iv.measure}</h6><span class="ac-tag badge ${iv.priority==='Kritike'?'crit':iv.priority==='I lartë'?'high':'med'}">${iv.priority}</span></div>
-          <p><b>Adreson:</b> ${iv.cause.label} (${iv.cause.contribution}% e riskut) · <b>Lloji:</b> ${iv.type}</p>
-          <div class="action-metrics">
-            <div class="am">Reduktim risku<b class="green">-${iv.rr}%</b></div>
-            <div class="am">Reduktim fatalitetesh<b class="green">-${iv.fr}%</b></div>
-          </div></div>`).join('')}
-      </div>
-    </div>
-
-    <div class="card mt-20">
-      <div class="card-head"><h5>Historiku i aksidenteve</h5><span class="hint">${crashes.length} regjistrime</span></div>
-      <div class="tbl-wrap tbl-scroll-sm"><table class="tbl"><thead><tr><th>ID</th><th>Data</th><th>Ora</th><th>Lloji</th><th>Ashpërsia</th><th class="num">Fat.</th><th>Ndriçim</th><th>Kushte</th><th class="num">Shpejt.</th></tr></thead><tbody>
-        ${crashes.map(a=>`<tr><td class="mono cell-id">${a.id}</td><td>${fmt.dateShort(a.date)}</td><td>${a.time}</td><td class="cell-meta">${a.collision_type}</td><td><span class="badge ${a.severity===4?'crit':a.severity===3?'high':a.severity===2?'med':'neutral'}">${a.severityLabel}</span></td><td class="num${a.fatalities?' num-fatal':''}">${a.fatalities||'-'}</td><td class="cell-meta">${a.lighting}</td><td class="cell-meta">${a.weather}</td><td class="num">${a.estimated_speed}</td></tr>`).join('')}
+    ${pageZone('Historiku i aksidenteve',`<div class="card">
+      <div class="tbl-wrap tbl-scroll-sm"><table class="tbl tbl-pro"><thead><tr><th>ID</th><th>Data</th><th>Lloji</th><th>Ashpërsia</th><th class="num">Fat.</th><th class="num">Lënd.</th><th>Viktima</th><th>Ndriçim</th><th class="num">km/h</th></tr></thead><tbody>
+        ${crashes.length?crashes.map(a=>`<tr><td class="mono cell-id">${a.id}</td><td>${fmt.dateShort(a.date)} ${a.time}</td><td class="cell-meta">${a.collision_type}</td><td><span class="badge ${a.severity===4?'badge-fatal':a.severity>=3?'badge-warn':'neutral'}">${a.severityLabel}</span></td><td class="num">${toneFatal(a.fatalities,'-')}</td><td class="num">${a.injured||0}</td><td class="cell-meta">${a.victim_type||'-'}${a.alcohol_involved?' · Alk.':''}</td><td class="cell-meta">${a.lighting}</td><td class="num">${a.estimated_speed}</td></tr>`).join(''):`<tr><td colspan="9" class="empty-cell">Pa aksidente të regjistruara.</td></tr>`}
       </tbody></table></div>
-    </div>
-    <div class="flex-c gap-12 mt-20"><a class="btn navy" href="#/reports">Gjenero raport</a><a class="btn" href="#/interventions">Shiko ndërhyrjet</a></div>
+    </div>`,'zone-history')}
+
+    <div class="page-actions flex-c gap-12"><a class="btn primary" href="#/reports">Raport</a><a class="btn ghost" href="#/interventions">Ndërhyrjet</a></div>
   </div>`;
   setTimeout(()=>{
     _map=baseMap('mapMain',[s.lat,s.lng],14);
@@ -634,30 +941,32 @@ function renderInterventions(){
   const avgRr=Math.round(port.reduce((s,i)=>s+i.rr,0)/port.length);
   const byType={};
   port.forEach(i=>byType[i.type]=(byType[i.type]||0)+1);
-  const typeColors={Infrastrukturore:CHART_COL.navy,Shpejtësie:CHART_COL.teal,Policore:CHART_COL.blue,Edukative:CHART_COL.amber,Emergjente:CHART_COL.red};
-  view().innerHTML=`<div class="view-pad fade-in">
-    <div class="page-head"><h3>Ndërhyrjet</h3><p>${port.length} masa për segmentet me risk të lartë.</p></div>
-    <div class="grid grid-kpi">
-      ${kpi({label:'Masa në portofol',val:port.length,ico:'tool',tone:'navy'})}
-      ${kpi({label:'Reduktim mes. risku',val:avgRr,unit:'%',ico:'shield',tone:'navy',invert:true})}
-      ${kpi({label:'Reduktim mes. fatalitetesh',val:avgFr,unit:'%',ico:'shield',tone:'green',invert:true})}
-      ${kpi({label:'Segmente të mbuluara',val:new Set(port.map(p=>p.seg.id)).size,ico:'layers'})}
-    </div>
-    <div class="grid g2 mt-20" style="grid-template-columns:1.4fr 1fr">
+  const typeColors={Infrastrukturore:'#475569',Shpejtësie:'#64748b',Policore:'#334155',Edukative:'#94a3b8',Emergjente:'#64748b'};
+  view().innerHTML=`<div class="view-pad page-shell fade-in page-interventions">
+    ${pageHead('interventions',`${port.length} masa të rekomanduara`,[{kind:'model',tag:'Plan i ndërhyrjeve'}])}
+
+    ${pageZone('Përmbledhje',`<div class="grid grid-kpi">
+      ${kpi({label:'Masa',val:port.length,tone:'acc'})}
+      ${kpi({label:'Reduktim Risku',val:avgRr,unit:'%',invert:true,tone:'good'})}
+      ${kpi({label:'Reduktim Fatalitetesh',val:avgFr,unit:'%',invert:true,tone:'good'})}
+      ${kpi({label:'Segmente',val:new Set(port.map(p=>p.seg.id)).size,tone:'acc'})}
+    </div>`,'zone-summary')}
+
+    ${pageZone('Plani',`<div class="grid g2 iv-plan-grid">
       <div class="card">
-        <div class="card-head"><h5>Portofoli i prioritizuar i ndërhyrjeve</h5><span class="hint">renditur sipas prioritetit</span></div>
-        <div class="tbl-wrap tbl-scroll"><table class="tbl"><thead><tr><th>Masa</th><th>Lloji</th><th>Segment</th><th class="num">-Risk</th><th class="num">-Fat.</th><th>Prioritet</th></tr></thead><tbody>
+        ${cardHead('Masat e Rekomanduara')}
+        <div class="tbl-wrap tbl-scroll"><table class="tbl tbl-pro"><thead><tr><th>Masa</th><th>Lloji</th><th>Segment</th><th class="num">Risk</th><th class="num">Fat.</th><th>Prioriteti</th></tr></thead><tbody>
         ${port.map(iv=>`<tr class="clickable" onclick="location.hash='#/segment/${iv.seg.id}'">
-          <td><span class="strong">${iv.measure}</span><br><span class="cell-sub">adreson: ${iv.cause.label}</span></td>
+          <td><span class="strong">${iv.measure}</span></td>
           <td><span class="badge neutral">${iv.type}</span></td>
           <td class="mono cell-id">${iv.seg.id}</td>
-          <td class="num num-gain">-${iv.rr}%</td>
-          <td class="num num-gain">-${iv.fr}%</td>
-          <td><span class="badge ${iv.priority==='Kritike'?'crit':iv.priority==='I lartë'?'high':'med'}">${iv.priority}</span></td></tr>`).join('')}
+          <td class="num">${toneGood('-'+iv.rr+'%')}</td>
+          <td class="num">${toneGood('-'+iv.fr+'%')}</td>
+          <td><span class="badge ${iv.priority==='Kritike'?'badge-fatal':iv.priority==='I lartë'?'badge-warn':'neutral'}">${iv.priority}</span></td></tr>`).join('')}
         </tbody></table></div>
       </div>
       <div class="card">
-        <div class="card-head"><h5>Përbërja sipas tipit</h5></div>
+        ${cardHead('Sipas Llojit')}
         <div class="card-pad donut-center">
           ${donut(Object.entries(byType).map(([k,v])=>({val:v,color:typeColors[k]||CHART_COL.slate,label:k})),{center:port.length,sub:'masa',size:170})}
           <div class="legend-list mt-16">
@@ -665,7 +974,7 @@ function renderInterventions(){
           </div>
         </div>
       </div>
-    </div>
+    </div>`,'zone-plan')}
   </div>`;
 }
 
@@ -709,19 +1018,21 @@ function reportSummaryText(){
 
 function renderReports(){
   const qarks=[...new Set(SEGS.map(s=>s.qark))].sort();
-  view().innerHTML=`<div class="view-pad fade-in">
-    <div class="page-head"><h3>Raportimi</h3><p>Gjenero raporte ekzekutive kombëtare, rajonale, bashkiake ose për segment. Konfiguro filtrat dhe shiko paraprakisht përmbledhjen para printimit.</p></div>
+  view().innerHTML=`<div class="view-pad page-shell fade-in page-reports">
+    ${pageHead('reports','Raporte kombëtare, rajonale dhe sipas segmentit',[
+      {kind:'official',tag:'KPI zyrtare'},
+      {kind:'model',tag:'Territorial'},
+    ])}
 
-    <div class="card rep-card" style="margin-bottom:20px">
-      <div class="card-head"><h5>Konfigurimi i raportit</h5><span class="hint">Lloji · fushëveprimi · periudha</span></div>
+    ${pageZone('Konfigurimi',`<div class="card rep-card">
       <div class="card-pad">
         <div class="rep-field">
           <label>Lloji i raportit</label>
           <div class="rep-type-tabs" id="repTypeTabs">
-            <button type="button" class="rep-type-tab on" data-t="national"><span class="t-title">Kombëtar</span><span class="t-sub">Përmbledhje zyrtare + prioritete</span></button>
-            <button type="button" class="rep-type-tab" data-t="regional"><span class="t-title">Qark</span><span class="t-sub">Analizë rajonale</span></button>
-            <button type="button" class="rep-type-tab" data-t="municipal"><span class="t-title">Bashki</span><span class="t-sub">Fokus lokal</span></button>
-            <button type="button" class="rep-type-tab" data-t="segment"><span class="t-title">Segment</span><span class="t-sub">Profil i detajuar</span></button>
+            <button type="button" class="rep-type-tab on" data-t="national"><span class="t-title">Kombëtar</span><span class="t-sub">INSTAT · i gjithë vendi</span></button>
+            <button type="button" class="rep-type-tab" data-t="regional"><span class="t-title">Qark</span><span class="t-sub">Sipas qarkut</span></button>
+            <button type="button" class="rep-type-tab" data-t="municipal"><span class="t-title">Bashki</span><span class="t-sub">Sipas bashkisë</span></button>
+            <button type="button" class="rep-type-tab" data-t="segment"><span class="t-title">Segment</span><span class="t-sub">Një segment rruge</span></button>
           </div>
         </div>
 
@@ -749,7 +1060,6 @@ function renderReports(){
           <div class="rep-field rep-field-scope hidden" id="fldSegment">
             <label for="repSegment">Segmenti</label>
             <select class="inp" id="repSegment"></select>
-            <div class="rep-seg-count" id="repSegCount"></div>
           </div>
           <div class="rep-field">
             <label for="repPeriod">Periudha analitike</label>
@@ -771,11 +1081,12 @@ function renderReports(){
         <div class="rep-actions">
           <button type="button" class="btn" id="repReset">Rivendos filtrat</button>
           <button type="button" class="btn" id="repCsv">Eksporto CSV</button>
-          <button type="button" class="btn navy" onclick="window.print()">Printo / PDF</button>
+          <button type="button" class="btn" onclick="window.print()">Printo / PDF</button>
         </div>
       </div>
-    </div>
-    <div id="reportOut"></div>
+    </div>`,'zone-config')}
+
+    ${pageZone('Rezultati','<div id="reportOut"></div>','zone-output')}
   </div>`;
 
   document.querySelectorAll('#repTypeTabs .rep-type-tab').forEach(btn=>{
@@ -874,10 +1185,9 @@ function syncReportUI(){
     document.getElementById('repSegSearch').value=reportSel.q||'';
     const segs=reportSegments();
     const sSel=document.getElementById('repSegment');
-    sSel.innerHTML=segs.length?segs.slice(0,120).map(s=>`<option value="${s.id}">${s.id} · ${escapeHtml(shortRoad(s))} · ${s.municipality}</option>`).join(''):'<option value="">Asnjë segment</option>';
+    sSel.innerHTML=segs.length?segs.map(s=>`<option value="${s.id}">${s.id} · ${escapeHtml(shortRoad(s))} · ${s.municipality}</option>`).join(''):'<option value="">Asnjë segment</option>';
     if(!segs.some(s=>s.id===reportSel.target)) reportSel.target=segs[0]?segs[0].id:'';
     if(segs.length) sSel.value=reportSel.target;
-    document.getElementById('repSegCount').textContent=segs.length?(segs.length>120?`Po shfaqen 120 nga ${segs.length} segmente`: `${segs.length} segmente`):'Asnjë segment nuk përputhet.';
   }
 
   document.getElementById('repSummary').textContent=reportSummaryText();
@@ -896,18 +1206,31 @@ function drawReport(){
   if(reportSel.type==='national'){
     const latest=offLatest();
     const causeTally=OFFICIAL.causes;
+    const accs=filterAccsByPeriod(ACCIDENTS);
+    const fat=accs.reduce((s,a)=>s+a.fatalities,0);
+    const inj=accs.reduce((s,a)=>s+a.injured,0);
+    const qarkRows=Object.entries(OFFICIAL.accidentsByQark[2025]||{}).sort((a,b)=>b[1]-a[1]).slice(0,8);
     out.innerHTML=`<div class="report-sheet">
     <div class="rs-head"><div><div class="org">${OFFICIAL.source}</div><h3>Raport Kombëtar i Sigurisë Rrugore</h3><div class="meta">Republika e Shqipërisë · Periudha ${period} · Gjeneruar ${today}</div></div>
       <div class="ph-score"><div class="n">${latest.fatalities}</div><div class="l">Fatalitete ${latest.year}</div></div></div>
     <div class="rs-body">
-      <div class="rs-sec"><h4>Përmbledhje</h4><p class="lead">Në ${latest.year} u regjistruan <b>${fmt.n(latest.accidents)}</b> aksidente, <b>${latest.fatalities}</b> fatalitete dhe <b>${fmt.n(latest.injured)}</b> të aksidentuar. Shkalla e fatalitetit: <b>${latest.fatalityRate}%</b>. Totali ${OFFICIAL.period}: <b>${OFFICIAL.totals.fatalities}</b> fatalitete, <b>${fmt.n(OFFICIAL.totals.accidents)}</b> aksidente.</p></div>
-      <div class="rs-sec"><h4>Shkaqet dominante</h4>
+      <div class="rs-sec"><h4>Përmbledhje</h4><p class="lead">Në ${latest.year} u regjistruan <b>${fmt.n(latest.accidents)}</b> aksidente, <b>${latest.fatalities}</b> fatalitete dhe <b>${fmt.n(latest.injured)}</b> të aksidentuar (INSTAT). Shkalla e fatalitetit: <b>${latest.fatalityRate}%</b>. Totali ${OFFICIAL.period}: <b>${OFFICIAL.totals.fatalities}</b> fatalitete, <b>${fmt.n(OFFICIAL.totals.accidents)}</b> aksidente.</p></div>
+      <div class="rs-sec rs-kpi"><h4>Treguesit kryesorë · ${period}</h4><div class="grid g4">
+        ${kpi({label:'Aksidente (model)',val:fmt.n(accs.length),tone:'navy'})}
+        ${kpi({label:'Fatalitete (model)',val:fat,tone:'red'})}
+        ${kpi({label:'Të lënduar (model)',val:fmt.n(inj),tone:'injured'})}
+        ${kpi({label:'Pikat e Zeza',val:NAT.blackSpots,tone:'red'})}
+      </div></div>
+      <div class="rs-sec"><h4>Shkaqet dominante (INSTAT)</h4>
         ${causeTally.slice(0,5).map(c=>`<div class="scorebar-row"><span class="sb-name">${c.label}</span><span class="sb-track"><i style="width:${c.pct}%"></i></span><span class="sb-num">${c.pct}%</span></div>`).join('')}
       </div>
+      ${qarkRows.length?`<div class="rs-sec"><h4>Aksidente sipas qarkut (INSTAT 2025)</h4><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Qarku</th><th class="num">Aksidente</th></tr></thead><tbody>
+        ${qarkRows.map(([q,n])=>`<tr><td>${q}</td><td class="num">${n}</td></tr>`).join('')}
+      </tbody></table></div></div>`:''}
       <div class="rs-sec"><h4>Vëzhgime</h4><ul class="obs-list">${OFFICIAL.observations.map(o=>`<li>${o}</li>`).join('')}</ul></div>
-      ${sectionDivider('Analiza territoriale','Pikat e zeza · segmente prioritare','<span class="data-tag model">Model</span>')}
-      <div class="rs-sec"><h4>Segmentet prioritare (${period})</h4><div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Segment</th><th class="num">Risku</th><th class="num">Fat.</th></tr></thead><tbody>
-        ${[...SEGS].sort((a,b)=>b.nwa.integrated-a.nwa.integrated).slice(0,10).map((s,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(shortRoad(s))}</td><td class="num"><b style="color:${nwaColor(s.nwa)}">${s.nwa.integrated}</b></td><td class="num">${s.m.fatalities}</td></tr>`).join('')}
+      ${sectionDivider('Analiza territoriale NWA')}
+      <div class="rs-sec"><h4>Segmentet prioritare (${period})</h4><div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Segment</th><th>Qarku</th><th class="num">Risku</th><th class="num">Fat.</th></tr></thead><tbody>
+        ${[...SEGS].sort((a,b)=>b.nwa.integrated-a.nwa.integrated).slice(0,10).map((s,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(shortRoad(s))}</td><td>${s.qark}</td><td class="num"><b style="color:${nwaColor(s.nwa)}">${s.nwa.integrated}</b></td><td class="num">${s.m.fatalities}</td></tr>`).join('')}
       </tbody></table></div></div>
     </div></div>`;
     return;
@@ -978,7 +1301,13 @@ function mWhy(t){ return `<p class="m-why"><span class="m-why-l">Pse</span>${t}<
 function mWhere(rows){ return `<ul class="m-where">${rows.map(r=>`<li><code>${r[0]}</code><span>${r[1]}</span></li>`).join('')}</ul>`; }
 
 function renderMethodology(){
-  view().innerHTML=buildMethodologyHTML({SEGS,NAT,OFFICIAL,fmt,secHead,mFormula,mWhy,mWhere,escapeHtml,shortRoad});
+  view().innerHTML=`<div class="view-pad page-shell fade-in page-methodology">
+    ${pageHead('methodology','Metodologjia NWA (DG MOVE 2023)',[
+      {kind:'model',tag:'Shembull segmentesh'},
+      {kind:'nwa',tag:'Dritare reaktive'},
+    ])}
+    ${buildMethodologyHTML({SEGS,NAT,OFFICIAL,fmt,secHead,mFormula,mWhy,mWhere,escapeHtml,shortRoad})}
+  </div>`;
 }
 
 /* ================================================================
@@ -987,28 +1316,46 @@ function renderMethodology(){
 function renderQuality(){
   const avgClass=NAT.avgClass;
   const nwaCov=Math.round(SEGS.filter(s=>s.nwa.reactive.cls!=='nodata').length/SEGS.length*100);
-  view().innerHTML=`<div class="view-pad fade-in">
-    <div class="page-head"><h3>Cilësia e të Dhënave</h3><p>Të dhëna zyrtare dhe mbulimi i vlerësimit të rrjetit.</p></div>
-    <div class="grid g2 mt-20">
-      <div class="card"><div class="card-head"><h5>Të dhëna zyrtare</h5><span class="data-tag official">INSTAT · Policia</span></div>
+  view().innerHTML=`<div class="view-pad page-shell fade-in page-quality">
+    ${pageHead('quality',`${NAT.segments} segmente · ${fmt.n(modelYearStats(2025).n)} aksidente (2025)`,[
+      {kind:'official',tag:'Zyrtare'},
+      {kind:'model',tag:'Model rrjeti'},
+      {kind:'nwa',tag:'Risku NWA'},
+    ])}
+
+    ${pageZone('Burimet',`<div class="grid g2">
+      <div class="card">
+        ${cardHead('Të Dhëna Zyrtare')}
         <div class="card-pad"><div class="kv-list">
-          <div class="kv-row"><span class="k">Periudha</span><span class="v">${OFFICIAL.period}</span></div>
-          <div class="kv-row"><span class="k">Aksidente totale</span><span class="v">${fmt.n(OFFICIAL.totals.accidents)}</span></div>
-          <div class="kv-row"><span class="k">Fatalitete totale</span><span class="v">${OFFICIAL.totals.fatalities}</span></div>
+          <div class="kv-row"><span class="k">Periudha zyrtare</span><span class="v">${OFFICIAL.period}</span></div>
+          <div class="kv-row"><span class="k">Periudha model</span><span class="v">${DATA_PERIODS.model.label}</span></div>
+          <div class="kv-row"><span class="k">Dritare NWA</span><span class="v">${DATA_PERIODS.nwa.label}</span></div>
+          <div class="kv-row"><span class="k">Aksidente</span><span class="v">${fmt.n(OFFICIAL.totals.accidents)}</span></div>
+          <div class="kv-row"><span class="k">Fatalitete</span><span class="v">${OFFICIAL.totals.fatalities}</span></div>
           <div class="kv-row"><span class="k">Burimi</span><span class="v">${OFFICIAL.source}</span></div>
-        </div></div></div>
-      <div class="card"><div class="card-head"><h5>Model i rrjetit</h5><span class="data-tag model">Demo</span></div>
+        </div></div>
+      </div>
+      <div class="card">
+        ${cardHead('Model i Rrjetit')}
         <div class="card-pad"><div class="kv-list">
           <div class="kv-row"><span class="k">Segmente</span><span class="v">${NAT.segments}</span></div>
-          <div class="kv-row"><span class="k">Aksidente modeluese</span><span class="v">${fmt.n(NAT.totAcc)}</span></div>
-          <div class="kv-row"><span class="k">Mbulim historiku</span><span class="v">${nwaCov}%</span></div>
+          <div class="kv-row"><span class="k">Periudha</span><span class="v">${DATA_PERIODS.model.label}</span></div>
+          <div class="kv-row"><span class="k">Aksidente (2025)</span><span class="v">${fmt.n(modelYearStats(2025).n)} · INSTAT ${offLatest().accidents}</span></div>
+          <div class="kv-row"><span class="k">Të lënduar (2025)</span><span class="v">${fmt.n(ACCIDENTS.filter(a=>a.year===2025).reduce((s,a)=>s+a.injured,0))} · INSTAT ${offLatest().injured}</span></div>
+          <div class="kv-row"><span class="k">Totali 2021-2025</span><span class="v">${fmt.n(NAT.totAcc)} aks. · ${fmt.n(NAT.totInjured)} lënd.</span></div>
+          <div class="kv-row"><span class="k">Rrjeti demo</span><span class="v">${NAT.segments} seg · ${fmt.n(NAT.networkKm)} km</span></div>
+          <div class="kv-row"><span class="k">Inventari</span><span class="v">${NETWORK_INVENTORY.source}</span></div>
+          <div class="kv-row"><span class="k">Mbulim NWA</span><span class="v">${nwaCov}%</span></div>
           <div class="kv-row"><span class="k">Risk mesatar</span><span class="v">${avgClass}/5</span></div>
-          <div class="kv-row"><span class="k">Pikat e zeza</span><span class="v">${NAT.blackSpots}</span></div>
-        </div></div></div>
-    </div>
-    <div class="card mt-20"><div class="card-head"><h5>Evolucioni zyrtar i aksidenteve</h5></div>
-      <div class="card-pad">${barChart({h:200,labels:offYears(),data:offSeries('accidents'),color:CHART_COL.navy})}</div>
-    </div>
+          <div class="kv-row"><span class="k">Pikat e Zeza</span><span class="v">${NAT.blackSpots}</span></div>
+        </div></div>
+      </div>
+    </div>`,'zone-sources')}
+
+    ${pageZone('Evolucioni',`<div class="card">
+      ${cardHead('Evolucioni')}
+      <div class="card-pad">${barChart({h:200,labels:offYears(),data:offSeries('accidents'),color:'#475569'})}</div>
+    </div>`,'zone-evolution')}
   </div>`;
 }
 
@@ -1016,24 +1363,30 @@ function renderQuality(){
    11. SETTINGS
    ================================================================ */
 function renderSettings(){
-  view().innerHTML=`<div class="view-pad fade-in" style="max-width:880px">
-    <div class="page-head"><h3>Konfigurimet</h3><p>Parametra të platformës.</p></div>
-    <div class="card"><div class="card-head"><h5>Pragjet e pikave të zeza</h5></div><div class="card-pad"><div class="kv-list">
-      <div class="kv-row"><span class="k">Risk i lartë</span><span class="v">Nivel 4–5</span></div>
-      <div class="kv-row"><span class="k">Kombinim kritik</span><span class="v">Shumë aksidente + rrugë problematike</span></div>
-      <div class="kv-row"><span class="k">Në zhvillim</span><span class="v">Risk mesatar (nivel 3)</span></div>
-      <div class="kv-row"><span class="k">Në vëzhgim</span><span class="v">Risk i ulët + sinjale mesatare</span></div>
-    </div><p class="note-inline mt-12">Detajet e plota në <a href="#/methodology">Metodologji</a>.</p></div></div>
-    <div class="card mt-20"><div class="card-head"><h5>Rreth platformës</h5></div><div class="card-pad">
-      <div class="kv-list">
-        <div class="kv-row"><span class="k">Versioni</span><span class="v">v1 · metodologjik</span></div>
-        <div class="kv-row"><span class="k">Të dhëna zyrtare</span><span class="v">${OFFICIAL.period}</span></div>
-        <div class="kv-row"><span class="k">Fatalitete 2025</span><span class="v">${offLatest().fatalities}</span></div>
-        <div class="kv-row"><span class="k">Model segmentesh</span><span class="v">${NAT.segments}</span></div>
-        <div class="kv-row"><span class="k">Pikat e zeza</span><span class="v">${NAT.blackSpots}</span></div>
-        <div class="kv-row"><span class="k">Objektivi</span><span class="v">Zero Fatalitete 2040</span></div>
+  view().innerHTML=`<div class="view-pad page-shell page-shell--narrow fade-in page-settings">
+    ${pageHead('settings','Parametrat e klasifikimit NWA',[{kind:'nwa',tag:'Pragjet e riskut'}])}
+
+    ${pageZone('Pragjet',`<div class="card">
+      ${cardHead('Pragjet')}
+      <div class="card-pad"><div class="kv-list">
+        <div class="kv-row"><span class="k">Risk i lartë</span><span class="v">Niveli 4-5</span></div>
+        <div class="kv-row"><span class="k">Kombinim kritik</span><span class="v">Shumë aksidente + rrugë problematike</span></div>
+        <div class="kv-row"><span class="k">Në zhvillim</span><span class="v">Niveli 3</span></div>
+        <div class="kv-row"><span class="k">Në vëzhgim</span><span class="v">Niveli 2</span></div>
       </div>
-    </div></div>
+      <p class="note-inline mt-12"><a href="#/methodology">Metodologjia NWA</a></p></div>
+    </div>`,'zone-thresholds')}
+
+    ${pageZone('Platforma',`<div class="card">
+      ${cardHead('Platforma')}
+      <div class="card-pad"><div class="kv-list">
+        <div class="kv-row"><span class="k">Versioni</span><span class="v">v1</span></div>
+        <div class="kv-row"><span class="k">Të dhëna</span><span class="v">Zyrtare ${OFFICIAL.period} · Model ${DATA_PERIODS.model.label}</span></div>
+        <div class="kv-row"><span class="k">Fatalitete 2025</span><span class="v">${offLatest().fatalities}</span></div>
+        <div class="kv-row"><span class="k">Segmente</span><span class="v">${NAT.segments}</span></div>
+        <div class="kv-row"><span class="k">Objektivi</span><span class="v">Zero Fatalitete 2040</span></div>
+      </div></div>
+    </div>`,'zone-platform')}
   </div>`;
 }
 
@@ -1120,6 +1473,11 @@ function boot(){
   document.getElementById('tbFatal').textContent=latest.fatalities;
   document.getElementById('tbAcc').textContent=fmt.n(latest.accidents);
   document.getElementById('tbRate').textContent=latest.fatalityRate+'%';
+  const tbFatalL=document.querySelector('.topbar-stat .l');
+  if(tbFatalL) document.querySelectorAll('.topbar-stat .l').forEach((el,i)=>{
+    const labels=['Fatalitete 2025 (INSTAT)','Aksidente 2025 (INSTAT)','Shkalla e fatalitetit 2025'];
+    el.textContent=labels[i]||el.textContent;
+  });
   if(!location.hash) location.hash='#/dashboard';
   navigate();
 }

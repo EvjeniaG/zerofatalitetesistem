@@ -53,7 +53,7 @@ function computeSegmentStats(seg) {
   };
 }
 
-/* Shkaqe nga historiku i aksidenteve — çdo shkak veç e veç */
+/* Shkaqe nga historiku i aksidenteve - çdo shkak veç e veç */
 function tallyField(acc, field) {
   const t = {};
   acc.forEach(a => {
@@ -226,7 +226,7 @@ function segmentRiskNarrative(seg) {
   if (!seg.m.n) return 'Pa aksidente të regjistruara.';
   const top = seg.causes.slice(0, 3).map(c => `${c.shortLabel} (${c.count})`).join(', ');
   const rest = seg.causes.length > 3 ? ` dhe ${seg.causes.length - 3} të tjera` : '';
-  return `${seg.m.n} aksidente — kryesorisht: ${top}${rest}`;
+  return `${seg.m.n} aksidente - kryesorisht: ${top}${rest}`;
 }
 
 function trendClass(m) {
@@ -245,7 +245,10 @@ function buildModel() {
     const trend = trendClass(m);
     const nwa = nwaModel.results[i];
     const causes = enrichCauseDetails({ ...seg, m, nwa }, rootCauses(seg));
-    return { ...seg, m, causes, trend, nwa };
+    const evidence = accidentEvidence({ ...seg, m, nwa });
+    const weakParams = {};
+    causes.forEach(c => { weakParams[c.key] = weakParamsForCause({ ...seg, nwa }, c.key); });
+    return { ...seg, m, causes, trend, nwa, evidence, weakParams };
   });
 
   segs.forEach(s => {
@@ -329,22 +332,37 @@ function nationalStats() {
   const fatRate = round1(totFatal / totAcc * 100);
   const accByYear = YEARS.map(y => ACCIDENTS.filter(a => a.year === y).length);
   const fatByYear = YEARS.map(y => ACCIDENTS.filter(a => a.year === y).reduce((s, a) => s + a.fatalities, 0));
+  const injByYear = YEARS.map(y => ACCIDENTS.filter(a => a.year === y).reduce((s, a) => s + a.injured, 0));
+  const victimMix = {};
+  ACCIDENTS.forEach(a => { victimMix[a.victim_type] = (victimMix[a.victim_type] || 0) + 1; });
+  const weekdayMix = {};
+  ACCIDENTS.forEach(a => { weekdayMix[a.weekday] = (weekdayMix[a.weekday] || 0) + 1; });
+  const alcoholPct = round1(ACCIDENTS.filter(a => a.alcohol_involved).length / totAcc * 100);
+  const totInjured = ACCIDENTS.reduce((s, a) => s + a.injured, 0);
+  const nwaWindow = ACCIDENTS.filter(a => a.countsForNwa).length;
   return {
     totAcc,
     totFatal,
     totSerious,
     totMinor,
+    totInjured,
     highRisk,
     avgClass,
     avgRisk: avgClass,
     avgResp,
     fatRate,
+    alcoholPct,
+    nwaWindow,
     blackSpots: BLACKSPOTS.length,
     emerging: EMERGING.length,
     monitor: MONITOR.length,
     accByYear,
     fatByYear,
+    injByYear,
+    victimMix,
+    weekdayMix,
     segments: SEGS.length,
+    networkKm: NETWORK_INVENTORY.totalKm,
   };
 }
 const NAT = nationalStats();

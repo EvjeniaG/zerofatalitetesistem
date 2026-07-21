@@ -62,8 +62,11 @@ const OFFICIAL = {
     {label:'E dielë',val:370},{label:'E hënë',val:367},{label:'E shtunë',val:348},{label:'E mërkurë',val:336},
   ],
   accidentsByQark:{
-    2025:{Tiranë:447,Durrës:91,Elbasan:58,Fier:117,Vlorë:106,Shkodër:105,Korçë:134,Kukës:34,Lezhë:169,Berat:24,Dibër:28,Gjirokastër:62},
+    2021:{Tiranë:368,Durrës:75,Elbasan:48,Fier:96,Vlorë:87,Shkodër:86,Korçë:110,Kukës:28,Lezhë:138,Berat:20,Dibër:23,Gjirokastër:51},
+    2022:{Tiranë:312,Durrës:64,Elbasan:41,Fier:82,Vlorë:74,Shkodër:73,Korçë:93,Kukës:24,Lezhë:117,Berat:17,Dibër:19,Gjirokastër:43},
+    2023:{Tiranë:344,Durrës:70,Elbasan:45,Fier:90,Vlorë:82,Shkodër:81,Korçë:103,Kukës:26,Lezhë:129,Berat:19,Dibër:22,Gjirokastër:48},
     2024:{Tiranë:552,Durrës:172,Elbasan:83,Fier:139,Vlorë:155,Shkodër:124,Korçë:60,Kukës:55,Lezhë:173,Berat:30,Dibër:39,Gjirokastër:84},
+    2025:{Tiranë:447,Durrës:91,Elbasan:58,Fier:117,Vlorë:106,Shkodër:105,Korçë:134,Kukës:34,Lezhë:169,Berat:24,Dibër:28,Gjirokastër:62},
   },
   observations:[
     '2015-2016: rritje e vogël e aksidenteve.',
@@ -78,6 +81,13 @@ const OFFICIAL = {
   ],
 };
 
+/* Periudhat e të dhënave - shfaqen kudo në platformë */
+const DATA_PERIODS = {
+  official: { label:'2014-2025', desc:'Të dhëna zyrtare kombëtare (INSTAT & Policia)' },
+  model:    { label:'2021-2025', desc:'Regjistri territorial kalibruar sipas INSTAT (aksidente, fatalitete & të lënduar për vit)' },
+  nwa:      { label:'2023-2025', desc:'Dritare reaktive NWA për vlerësimin e riskut' },
+};
+
 function offLatest(){ return OFFICIAL.yearly[OFFICIAL.yearly.length-1]; }
 function offPrev(){ return OFFICIAL.yearly[OFFICIAL.yearly.length-2]; }
 function offYears(){ return OFFICIAL.yearly.map(y=>y.year); }
@@ -85,4 +95,19 @@ function offSeries(field){ return OFFICIAL.yearly.map(y=>y[field]); }
 function offYoY(field, year){
   const row=OFFICIAL.yoy.find(y=>y.year===year);
   return row? row[field] : null;
+}
+
+/* Mapim shkaktarësh model → taksonomia zyrtare INSTAT */
+const OFFICIAL_CAUSE_MAP={
+  speed:'Shpejtësia',
+  pedestrian:'Mosrespektimi i këmbësorëve',
+  lighting:'Sinjalistika',
+  curve:'Ndryshim i papritur i drejtimit',
+  junction:'Mosdhënia e përparësisë',
+  surface:'Qasje e pakujdesshme',
+  traffic:'Parakalim',
+  response:'Të tjera',
+};
+function offQarkTargets(year){
+  return OFFICIAL.accidentsByQark[year]||null;
 }

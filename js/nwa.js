@@ -67,7 +67,7 @@ const NWA_REACTIVE_META = {
 const NWA_BLACK_SPOT_RULES = {
   blackSpot: [
     'Niveli i riskut 4 ose 5 (risk i lartë / shumë i lartë)',
-    'OSE shumë aksidente + rrugë problematike - edhe kur niveli është 2–3',
+    'OSE shumë aksidente + rrugë problematike - edhe kur niveli është 2-3',
   ],
   emerging: 'Risk mesatar (nivel 3), por jo ende pikë e zezë - kandidat për escalim',
   monitor: 'Risk i ulët (nivel 2) me sinjale mesatare në rrugë ose aksidente',
@@ -147,21 +147,23 @@ function poissonCDF(k, lambda) {
 /* ---- tipi NWA i rrugës (4 kategori) ---- */
 function mapNwaType(seg) {
   if (seg.roadType === 'Autostradë') return seg.urban ? 'mw_urban' : 'mw_rural';
-  if (seg.roadType === 'Rrugë nacionale') {
-    const n = parseInt((seg.id || '').replace(/\D/g, ''), 10) || 0;
-    return n % 2 === 0 ? 'pri_div' : 'pri_undiv';
-  }
+  if (seg.roadType === 'Rrugë nacionale') return seg.divided ? 'pri_div' : 'pri_undiv';
   return 'pri_undiv';
 }
 
-/* ---- të dhëna fiktive infrastrukture + AADT ---- */
+/* ---- të dhëna demo infrastrukture + AADT (nga data.js ose gjenerim) ---- */
 function enrichNwaAttributes(seg) {
   seg.nwaType = mapNwaType(seg);
   const t = NWA_TYPES[seg.nwaType];
-  const baseAadt = t.motorway
-    ? (seg.urban ? rint(22000, 48000) : rint(12000, 35000))
-    : (seg.urban ? rint(8000, 22000) : rint(2500, 14000));
-  seg.aadt = Math.round(baseAadt * (0.75 + seg.exposure * 0.35));
+  if (seg.aadt == null) {
+    const baseAadt = t.motorway
+      ? (seg.urban ? rint(22000, 48000) : rint(12000, 35000))
+      : (seg.urban ? rint(8000, 22000) : rint(2500, 14000));
+    seg.aadt = Math.round(baseAadt * (0.75 + seg.exposure * 0.35));
+    seg.aadtYear = 2024;
+    seg.aadtSource = 'Demo · vlerësim';
+  }
+  if (seg.nwaParams) return;
 
   const q = (base, spread) => clamp(base + gauss(0, spread), 0.15, 0.98);
   const cw = seg.causeWeights || {};
@@ -311,6 +313,79 @@ function buildNwaAssessment(segments) {
   return { results, ref, aadt15, version: NWA_VERSION };
 }
 
+function nwaRiskScale(integrated, demo) {
+  return `<div class="rsk-scale" aria-label="${demo ? 'Shkalla 1-5' : `Niveli ${integrated} nga 5`}">${[1, 2, 3, 4, 5].map(i => {
+    const m = NWA_CLASS_META[i];
+    const on = !demo && i === integrated ? ' on' : '';
+    return `<span class="rsk-step${on}" style="--step:${m.color}"><i>${i}</i></span>`;
+  }).join('')}</div>`;
+}
+
+function nwaRiskBreakdown(nwa, opts) {
+  opts = opts || {};
+  const meta = nwa.meta || NWA_CLASS_META[nwa.integrated];
+  const pro = NWA_PROACTIVE_META[nwa.proactive.cls];
+  const rea = NWA_REACTIVE_META[nwa.reactive.cls];
+  const onDark = opts.onDark;
+
+  if (opts.compact) {
+    const roadShort = pro.label.replace(/^Rrugë\s/i, '');
+    return `<div class="rsk-read" title="Rruga: ${pro.label} · Historiku: ${rea.label} · Niveli ${nwa.integrated}">
+      <div class="rsk-read-head">
+        <span class="rsk-val" style="color:${meta.color}">${nwa.integrated}</span>
+        <span class="rsk-read-title">${meta.label}</span>
+      </div>
+      <div class="rsk-read-sub">
+        <span class="rsk-read-item"><span class="rsk-read-k">Rruga</span> ${roadShort}</span>
+        <span class="rsk-read-item"><span class="rsk-read-k">Historiku</span> ${rea.label}</span>
+      </div>
+    </div>`;
+  }
+
+  const cls = onDark ? ' rsk-panel--hero' : '';
+  const roadLbl = pro.label.replace(/^Rrugë\s/i, '');
+  return `<div class="rsk-panel${cls}">
+    <div class="rsk-head">
+      <div class="rsk-score" style="--c:${meta.color}">
+        <span class="rsk-big">${nwa.integrated}</span>
+        <span class="rsk-lbl">${meta.label}</span>
+      </div>
+      ${nwaRiskScale(nwa.integrated)}
+    </div>
+    <div class="rsk-formula rsk-formula--plain">
+      <div class="rsk-fact pro" style="--c:${pro.color}">
+        <span class="rsk-fk">Gjendja e rrugës</span>
+        <span class="rsk-fv">${roadLbl}</span>
+        <span class="rsk-fs">Cilësia ${nwa.proactive.score}%</span>
+      </div>
+      <span class="rsk-op">+</span>
+      <div class="rsk-fact rea" style="--c:${rea.color}">
+        <span class="rsk-fk">Historiku i aksidenteve</span>
+        <span class="rsk-fv">${rea.label}</span>
+        <span class="rsk-fs">${nwa.reactive.k} aksidente</span>
+      </div>
+      <span class="rsk-op">=</span>
+      <div class="rsk-fact out" style="--c:${meta.color}">
+        <span class="rsk-fk">Niveli i riskut</span>
+        <span class="rsk-fv">${nwa.integrated}</span>
+        <span class="rsk-fs">${meta.label}</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+function nwaModelCard() {
+  return `<div class="nwa-model-card nwa-model-card--plain">
+    <div class="nmc-head"><span class="nmc-title">Si lexohet niveli i riskut</span></div>
+    <div class="nmc-steps">
+      <div class="nmc-step"><span class="nmc-k">Gjendja e rrugës</span><span class="nmc-v">e sigurt · mesatare · problematike</span></div>
+      <div class="nmc-step"><span class="nmc-k">Historiku i aksidenteve</span><span class="nmc-v">pak · mesatare · shumë</span></div>
+      <div class="nmc-step nmc-step-out"><span class="nmc-k">Rezultati</span><span class="nmc-v">Niveli 1-5</span></div>
+    </div>
+    ${nwaRiskScale(0, true)}
+  </div>`;
+}
+
 function nwaClassBadge(nwa) {
   const m = nwa.meta || NWA_CLASS_META[nwa.integrated];
   return `<span class="risk-pill" style="background:${m.color}12;border-color:${m.color}40;color:${m.color}"><span class="risk-pill-dot" style="background:${m.color}"></span>${m.label}</span>`;
@@ -339,9 +414,7 @@ function buildMethodologyHTML(D) {
   const ex = [...D.SEGS].sort((a, b) => b.nwa.integrated - a.nwa.integrated)[0];
   const n = ex.nwa;
   const rfList = Object.values(n.proactive.rfs);
-  return `<div class="view-pad fade-in method" style="max-width:1020px">
-    <div class="page-head"><h3>Metodologjia</h3><p>Kuadri teknik i vlerësimit të rrjetit (NWA · DG MOVE 2023). Të dhëna demo.</p></div>
-
+  return `
     ${D.secHead('1 · Baza ligjore dhe qëllimi')}
     <div class="card card-pad">
       <p class="prose">NWA është metodologjia e rekomanduar nga BE për vlerësimin e sigurisë rrugore në shkallë rrjeti (Direktiva 2008/96/EC, e ndryshuar nga 2019/1936). Qëllimi: klasifikimi i segmenteve në klasa përparësie për inspektime të synuara dhe ndërhyrje.</p>
@@ -434,5 +507,5 @@ Klasifikimi: r1 / r2 / r3 / nodata`)}
         <li>Trendi i aksidenteve në profile është vetëm për kontekst historik, jashtë klasifikimit NWA.</li>
       </ul>
     </div>
-  </div>`;
+  `;
 }
