@@ -20,7 +20,7 @@ const NWA_MW_PARAMS = [
   { key: 'laneWidth', label: 'Gjerësia e korsisë' },
   { key: 'roadside', label: 'Ana e rrugës / zona anësore' },
   { key: 'curvature', label: 'Kurbatura' },
-  { key: 'interchanges', label: 'Interchange / distanca' },
+  { key: 'interchanges', label: 'Ndërrime / distanca midis hyrjeve' },
   { key: 'pedConflict', label: 'Konflikte këmbësorë/çiklistë' },
   { key: 'trafficOps', label: 'Operimi i trafikut / informim' },
 ];
@@ -31,7 +31,7 @@ const NWA_PRI_PARAMS = [
   { key: 'propertyAccess', label: 'Dendësia hyrjeve private' },
   { key: 'junctions', label: 'Kryqëzimet' },
   { key: 'pedConflict', label: 'Konflikte këmbësorë/çiklistë' },
-  { key: 'shoulder', label: 'Lloji / gjerësia bankinës' },
+  { key: 'shoulder', label: 'Bankina (lloji dhe gjerësia)' },
   { key: 'passingLanes', label: 'Korsitë e kalimit' },
   { key: 'signsSignals', label: 'Shenjat dhe sinjalistika' },
 ];
@@ -53,12 +53,12 @@ const NWA_CLASS_META = {
 
 const NWA_PROACTIVE_META = {
   p1: { label: 'Rrugë e sigurt', cls: 'p1', color: '#166534' },
-  p2: { label: 'Rrugë mesatare', cls: 'p2', color: '#ca8a04' },
+  p2: { label: 'Gjendje mesatare e rrugës', cls: 'p2', color: '#ca8a04' },
   p3: { label: 'Rrugë problematike', cls: 'p3', color: '#dc2626' },
 };
 const NWA_REACTIVE_META = {
   r1: { label: 'Pak aksidente', cls: 'r1', color: '#166534' },
-  r2: { label: 'Aksidente mesatare', cls: 'r2', color: '#ca8a04' },
+  r2: { label: 'Frekuencë mesatare aksidentesh', cls: 'r2', color: '#ca8a04' },
   r3: { label: 'Shumë aksidente', cls: 'r3', color: '#dc2626' },
   nodata: { label: 'Pa të dhëna', cls: 'nodata', color: '#64748b' },
 };
@@ -362,7 +362,7 @@ function nwaRiskBreakdown(nwa, opts) {
       <div class="rsk-fact rea" style="--c:${rea.color}">
         <span class="rsk-fk">Historiku i aksidenteve</span>
         <span class="rsk-fv">${rea.label}</span>
-        <span class="rsk-fs">${nwa.reactive.k} aksidente</span>
+        <span class="rsk-fs">${nwa.reactive.k} me viktima · ${DATA_PERIODS.nwa.label}</span>
       </div>
       <span class="rsk-op">=</span>
       <div class="rsk-fact out" style="--c:${meta.color}">

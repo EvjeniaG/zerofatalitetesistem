@@ -67,9 +67,9 @@ const VOCAB = {
   weather:['Kthjellët','Me re','Shi','Mjegull','Erë e fortë','Akull/Borë'],
   lighting:['Dritë dite','Muzg','Natë me ndriçim','Natë pa ndriçim'],
   surface:['I thatë','I lagësht','Me baltë/zhavorr','Akull/Borë'],
-  driver:['Tejkalim shpejtësie','Nuk dha përparësi','Manovër e gabuar','Lodhje','Alkool ose drogë','Telefon gjatë vozitjes','Distancë shumë e shkurtër','Pa gabim të drejtuesit'],
-  infra:['Pa dritë publike','Shenja të dëmtuara','Kthesë e rrezikshme','Kryqëzim i pasigurt','Rrugë e dëmtuar','Mungon trotuar/kalim','Pa problem infrastrukture'],
-  vehicle:['Defekt frenash','Goma të konsumuara','Drita jofunksionale','Mbingarkesë','Pa faktor automjeti'],
+  driver:['Tejkalim shpejtësie','Nuk dha përparësi','Manovër e gabuar','Lodhje','Alkool ose drogë','Telefon gjatë vozitjes','Distancë e pamjaftueshme','Pa faj të drejtuesit'],
+  infra:['Pa ndriçim publik','Shenja të dëmtuara','Kthesë e rrezikshme','Kryqëzim i pasigurt','Rrugë e dëmtuar','Mungon trotuar ose kalim','Pa problem infrastrukture'],
+  vehicle:['Defekt frenash','Goma të konsumuara','Drita jofunksionale','Mbingarkesë','Pa problem automjeti'],
 };
 // Root-cause taxonomy used by segment profiles & root-cause engine
 const CAUSES = [
@@ -306,7 +306,7 @@ function buildDataset(){
       const a=shuffled[g%shuffled.length];
       if(a.alcohol_involved&&a.driver_factor==='Alkool ose drogë'){
         a.alcohol_involved=false;
-        a.driver_factor=weighted([['Tejkalim shpejtësie',25],['Manovër e gabuar',20],['Lodhje',15],['Pa gabim të drejtuesit',10]]);
+        a.driver_factor=weighted([['Tejkalim shpejtësie',25],['Manovër e gabuar',20],['Lodhje',15],['Pa faj të drejtuesit',10]]);
         current--;
       }
     }
@@ -367,7 +367,7 @@ function buildDataset(){
     const driver=dominant==='speed'?'Tejkalim shpejtësie':
       dominant==='junction'?'Nuk dha përparësi':
       weighted([['Tejkalim shpejtësie',20],['Nuk dha përparësi',16],['Manovër e gabuar',16],['Lodhje',10],['Alkool ose drogë',12],['Telefon gjatë vozitjes',10],['Distancë shumë e shkurtër',10],['Pa gabim të drejtuesit',6]]);
-    const infra=dominant==='lighting'?'Pa dritë publike':
+    const infra=dominant==='lighting'?'Pa ndriçim publik':
       dominant==='curve'?'Kthesë e rrezikshme':
       dominant==='junction'?'Kryqëzim i pasigurt':
       dominant==='surface'?'Rrugë e dëmtuar':
