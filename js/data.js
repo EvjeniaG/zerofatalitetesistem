@@ -425,7 +425,7 @@ function buildDataset(){
     calibrateAlcoholForYear(accidents, yr);
   }
   accidents.forEach(a=>{
-    a.countsForNwa=[2023,2024,2025].includes(a.year)&&(a.fatalities>0||a.serious_injuries>0||a.severity>=3);
+    a.countsForNwa=YEARS.includes(a.year)&&(a.fatalities>0||a.serious_injuries>0||a.severity>=3);
   });
   return {segments, accidents};
 }

@@ -85,7 +85,7 @@ const OFFICIAL = {
 const DATA_PERIODS = {
   official: { label:'2014-2025', desc:'Të dhëna zyrtare kombëtare (INSTAT & Policia)' },
   model:    { label:'2021-2025', desc:'Regjistri territorial kalibruar sipas INSTAT (aksidente, fatalitete & të lënduar për vit)' },
-  nwa:      { label:'2023-2025', desc:'Dritare reaktive NWA për vlerësimin e riskut' },
+  nwa:      { label:'2021-2025', desc:'Dritare reaktive NWA për vlerësimin e riskut' },
 };
 
 function offLatest(){ return OFFICIAL.yearly[OFFICIAL.yearly.length-1]; }

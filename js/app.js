@@ -2,7 +2,7 @@
    app.js - SPA shell: navigation, hash router, module views.
    ============================================================= */
 
-const APP_BUILD='20260629-ui55';
+const APP_BUILD='20260629-ui57';
 
 function modelYearStats(y){
   const rows=ACCIDENTS.filter(a=>a.year===y);
@@ -921,33 +921,33 @@ function renderSegmentProfile(id){
       </div>`:''}
     </div>`,'zone-risk')}
 
-    ${pageZone('Koeficientët',`<div class="card">
+    ${pageZone('Koeficientët',`<div class="card profile-coef-card">
       <div class="card-pad profile-coef-intro">
-        <p class="prose muted">Niveli i riskut llogaritet duke kombinuar <b>gjendjen e rrugës</b> (koeficientët RF të infrastrukturës) me <b>historikun reaktiv</b> të aksidenteve në dritaren ${NWA_REACTIVE_WINDOW.join('-')}.</p>
+        <p class="prose muted">Niveli i riskut kombinon <b>gjendjen e rrugës</b> (koeficientët RF) me <b>historikun reaktiv</b> të aksidenteve me viktima · <b>${periodOf('nwa')}</b>.</p>
       </div>
-      <div class="profile-row-2 profile-coef-grid">
+      <div class="profile-coef-grid">
         <div class="profile-coef-col">
           <h6 class="sub-block-title">Gjendja e rrugës · ${nwa.proactive.score}%</h6>
-          <div class="tbl-wrap"><table class="tbl param-tbl"><thead><tr><th>Parametri</th><th class="num" title="Koeficienti i rrezikut">Koef.</th><th class="num">Cilësia</th></tr></thead><tbody>
-            ${rfRows.map(r=>`<tr><td>${r.label}</td><td class="num">${r.rf}</td><td class="num">${r.quality}%</td></tr>`).join('')}
+          <div class="tbl-wrap coef-tbl-wrap"><table class="tbl param-tbl param-tbl--stack param-tbl--pro"><thead><tr><th>Parametri</th><th class="num">Koef.</th><th class="num">Cilësia</th></tr></thead><tbody>
+            ${rfRows.map(r=>`<tr><td class="coef-name">${r.label}</td><td class="num" data-label="Koef.">${r.rf}</td><td class="num" data-label="Cilësia">${r.quality}%</td></tr>`).join('')}
           </tbody></table></div>
         </div>
         <div class="profile-coef-col">
-          <h6 class="sub-block-title">Historiku reaktiv · ${NWA_REACTIVE_WINDOW.join('-')}</h6>
-          <div class="tbl-wrap"><table class="tbl param-tbl"><thead><tr><th>Treguesi</th><th class="num">Vlera</th></tr></thead><tbody>
-            <tr><td>Aksidente me viktima</td><td class="num"><b>${nwa.reactive.k}</b></td></tr>
-            <tr><td>Densiteti</td><td class="num">${nwa.reactive.crashDensity}</td></tr>
-            <tr><td>Shkalla</td><td class="num">${nwa.reactive.crashRate}</td></tr>
-            <tr><td>Pritshme</td><td class="num">${nwa.reactive.expected}</td></tr>
-            <tr><td>Klasifikimi</td><td class="num">${NWA_REACTIVE_META[nwa.reactive.cls]?.label||nwa.reactive.cls}</td></tr>
-            <tr><td>Metrika</td><td class="num">${nwa.reactive.metricUsed==='crash_rate'?'Shkalla (AADT)':'Densiteti'}</td></tr>
-            <tr><td>p (i lartë)</td><td class="num">${nwa.reactive.pHigh??'-'}%</td></tr>
-            ${nwa.proactive.trafficFiltered?'<tr><td>Filtri trafikut</td><td class="num">p3→p2 (AADT i ulët)</td></tr>':''}
+          <h6 class="sub-block-title">Historiku reaktiv · ${periodOf('nwa')}</h6>
+          <div class="tbl-wrap coef-tbl-wrap"><table class="tbl param-tbl param-tbl--stack param-tbl--rea"><thead><tr><th>Treguesi</th><th class="num">Vlera</th></tr></thead><tbody>
+            <tr><td class="coef-name">Aksidente me viktima</td><td class="num"><b>${nwa.reactive.k}</b></td></tr>
+            <tr><td class="coef-name">Densiteti</td><td class="num">${nwa.reactive.crashDensity}</td></tr>
+            <tr><td class="coef-name">Shkalla</td><td class="num">${nwa.reactive.crashRate}</td></tr>
+            <tr><td class="coef-name">Pritshme</td><td class="num">${nwa.reactive.expected}</td></tr>
+            <tr><td class="coef-name">Klasifikimi</td><td class="num">${NWA_REACTIVE_META[nwa.reactive.cls]?.label||nwa.reactive.cls}</td></tr>
+            <tr><td class="coef-name">Metrika</td><td class="num">${nwa.reactive.metricUsed==='crash_rate'?'Shkalla (AADT)':'Densiteti'}</td></tr>
+            <tr><td class="coef-name">p (i lartë)</td><td class="num">${nwa.reactive.pHigh??'-'}%</td></tr>
+            ${nwa.proactive.trafficFiltered?'<tr><td class="coef-name">Filtri trafikut</td><td class="num">p3→p2 (AADT i ulët)</td></tr>':''}
           </tbody></table></div>
         </div>
       </div>
       ${ev.n?`<div class="card-pad profile-evidence">
-        <h6 class="sub-block-title">Dëshmi nga historiku</h6>
+        <h6 class="sub-block-title">Dëshmi nga historiku · ${periodOf('nwa')}</h6>
         <div class="evidence-chips">
           <span class="ev-chip">${ev.overSpeedPct}% mbi limit</span>
           <span class="ev-chip">${ev.noLightPct}% natë pa dritë</span>

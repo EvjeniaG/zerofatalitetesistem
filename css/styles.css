@@ -3989,6 +3989,13 @@ table.tbl.tbl-pro tbody td{border-bottom-color:var(--modern-line-2)!important}
 .profile-coef-intro{padding-bottom:12px!important;border-bottom:1px solid var(--modern-line-2)}
 .profile-coef-intro .prose{margin:0;font-size:14px;line-height:1.55}
 .profile-coef-grid{padding:16px 20px 20px!important;gap:20px!important}
+.profile-coef-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:20px;
+  align-items:start;
+}
+.profile-coef-card .coef-tbl-wrap{border-top:1px solid var(--modern-line-2)}
 .profile-coef-col .sub-block-title{
   margin:0 0 10px;
   font-size:13px;
@@ -4001,7 +4008,7 @@ table.tbl.tbl-pro tbody td{border-bottom-color:var(--modern-line-2)!important}
 
 @media(max-width:900px){
   .profile-row-2{grid-template-columns:1fr}
-  .profile-coef-grid{grid-template-columns:1fr!important}
+  .profile-coef-grid{grid-template-columns:1fr!important;padding:12px 14px 16px!important;gap:16px!important}
 }
 
 /* =============================================================
@@ -4384,3 +4391,105 @@ table.tbl.param-tbl tbody td,table.tbl.param-tbl thead th{font-size:var(--type-s
 .chart-footnote{margin:10px 0 0}
 .layer-period{font-size:9px;opacity:.85;margin-left:2px}
 .kv-period{font-size:10px;color:var(--ink-4);font-weight:600}
+
+/* Profil segmenti — koeficientët mobile */
+@media(max-width:768px){
+  .page-segment .profile-coef-intro{padding:12px 14px!important}
+  .page-segment .profile-coef-intro .prose{font-size:13px!important;line-height:1.5!important}
+  .page-segment .profile-coef-col .sub-block-title{
+    font-size:11px!important;
+    line-height:1.35;
+    margin-bottom:8px;
+    word-break:break-word;
+  }
+  .page-segment .profile-coef-col .coef-tbl-wrap{
+    overflow:visible;
+    border:none;
+    margin:0 -2px;
+  }
+  .page-segment .profile-coef-col .param-tbl--stack{
+    display:block;
+    width:100%;
+    border:none;
+  }
+  .page-segment .profile-coef-col .param-tbl--stack thead{display:none}
+  .page-segment .profile-coef-col .param-tbl--stack tbody{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .page-segment .profile-coef-col .param-tbl--stack tr{
+    display:block;
+    background:#f8fafc;
+    border:1px solid #e2e8f0;
+    border-radius:10px;
+    padding:10px 12px;
+  }
+  .page-segment .profile-coef-col .param-tbl--stack td{
+    display:block;
+    padding:0!important;
+    border:none!important;
+    background:transparent!important;
+    font-size:13px!important;
+    line-height:1.45;
+  }
+  .page-segment .profile-coef-col .param-tbl--pro td.coef-name{
+    font-weight:700;
+    color:var(--navy,#0b1f3a);
+    margin-bottom:8px;
+    padding-bottom:8px!important;
+    border-bottom:1px solid #e2e8f0!important;
+  }
+  .page-segment .profile-coef-col .param-tbl--pro td.num{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    padding:5px 0!important;
+  }
+  .page-segment .profile-coef-col .param-tbl--pro td.num::before{
+    content:attr(data-label);
+    font-size:12px;
+    font-weight:600;
+    color:#64748b;
+    flex:1;
+    min-width:0;
+  }
+  .page-segment .profile-coef-col .param-tbl--rea tr{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:12px;
+    padding:10px 12px;
+  }
+  .page-segment .profile-coef-col .param-tbl--rea td.coef-name{
+    flex:1;
+    min-width:0;
+    font-size:13px!important;
+    font-weight:500;
+    color:#334155;
+    padding-right:8px!important;
+  }
+  .page-segment .profile-coef-col .param-tbl--rea td.num{
+    flex-shrink:0;
+    font-weight:700;
+    font-size:13px!important;
+    text-align:right;
+    color:var(--navy,#0b1f3a);
+    max-width:46%;
+    word-break:break-word;
+  }
+  .page-segment .profile-evidence{
+    padding:12px 14px 14px!important;
+    border-top:1px solid var(--modern-line-2);
+  }
+  .page-segment .profile-evidence .evidence-chips{gap:6px}
+  .page-segment .profile-evidence .ev-chip{
+    flex:1 1 calc(50% - 6px);
+    min-width:0;
+    text-align:center;
+    font-size:11px!important;
+    padding:8px 6px;
+    line-height:1.35;
+  }
+}

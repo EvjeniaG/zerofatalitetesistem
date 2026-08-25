@@ -5,8 +5,8 @@
    ============================================================= */
 
 const NWA_VERSION = 'Vlerësim i rrjetit · demo';
-const NWA_REACTIVE_YEARS = 3;
-const NWA_REACTIVE_WINDOW = [2023, 2024, 2025];
+const NWA_REACTIVE_WINDOW = YEARS;
+const NWA_REACTIVE_YEARS = NWA_REACTIVE_WINDOW.length;
 
 const NWA_TYPES = {
   mw_rural: { label: 'Autostradë - rurale', motorway: true, thr: { low: 85, high: 65 } },
