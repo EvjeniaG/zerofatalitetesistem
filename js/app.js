@@ -2,7 +2,7 @@
    app.js - SPA shell: navigation, hash router, module views.
    ============================================================= */
 
-const APP_BUILD='20260629-ui59';
+const APP_BUILD='20260629-ui60';
 
 function modelYearStats(y){
   const rows=ACCIDENTS.filter(a=>a.year===y);
@@ -1545,8 +1545,32 @@ function initChartTooltips(){
   document.addEventListener('click',e=>{ const el=e.target.closest('[data-tip]'); if(el) show(e,el); else hide(); });
 }
 
+/* demo disclaimer — shfaqet kur hapet faqja */
+function initDemoDisclaimer(){
+  const dlg=document.getElementById('demoDisclaimer');
+  const scrim=document.getElementById('demoDisclaimerScrim');
+  const btn=document.getElementById('demoDisclaimerBtn');
+  if(!dlg||!scrim||!btn) return;
+  const close=()=>{
+    dlg.hidden=true;
+    scrim.hidden=true;
+    scrim.setAttribute('aria-hidden','true');
+    document.body.classList.remove('demo-disclaimer-open');
+  };
+  dlg.hidden=false;
+  scrim.hidden=false;
+  scrim.setAttribute('aria-hidden','false');
+  document.body.classList.add('demo-disclaimer-open');
+  btn.focus();
+  btn.addEventListener('click',close);
+  dlg.addEventListener('keydown',e=>{
+    if(e.key==='Escape') close();
+  });
+}
+
 /* boot */
 function boot(){
+  initDemoDisclaimer();
   const ver=document.getElementById('appVersion');
   if(ver) ver.textContent='v1 demo · '+APP_BUILD;
   buildNav();

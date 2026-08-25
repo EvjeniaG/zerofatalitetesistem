@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=20260629-ui59">
+<link rel="stylesheet" href="css/styles.css?v=20260629-ui60">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 </head>
@@ -52,14 +52,26 @@
   <footer class="app-foot">Republika e Shqipërisë · Platformë Kombëtare për Menaxhimin e Riskut Rrugor · Të dhëna zyrtare 2014-2025 · Model 2021-2025 · <span id="appVersion">NWA demo</span></footer>
 </div>
 <div class="scrim" id="scrim"></div>
+<div class="demo-disclaimer-scrim" id="demoDisclaimerScrim" hidden aria-hidden="true"></div>
+<div class="demo-disclaimer" id="demoDisclaimer" role="dialog" aria-modal="true" aria-labelledby="demoDisclaimerTitle" hidden>
+  <div class="demo-disclaimer-card">
+    <div class="demo-disclaimer-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+    </div>
+    <h2 class="demo-disclaimer-title" id="demoDisclaimerTitle">Demonstrim</h2>
+    <p class="demo-disclaimer-text">Të dhënat e shfaqura në këtë platformë janë <strong>fiktive</strong> dhe shërbejnë vetëm për ilustrim.</p>
+    <p class="demo-disclaimer-sub">Kjo është vetëm një <strong>demo</strong> — jo një sistem operacional me të dhëna zyrtare.</p>
+    <button type="button" class="btn primary demo-disclaimer-btn" id="demoDisclaimerBtn">E kuptova, vazhdo</button>
+  </div>
+</div>
 
-<script src="js/util.js?v=20260629-ui59"></script>
-<script src="js/official.js?v=20260629-ui59"></script>
-<script src="js/data.js?v=20260629-ui59"></script>
-<script src="js/nwa.js?v=20260629-ui59"></script>
-<script src="js/engine.js?v=20260629-ui59"></script>
-<script src="js/interventions.js?v=20260629-ui59"></script>
-<script src="js/charts.js?v=20260629-ui59"></script>
-<script src="js/app.js?v=20260629-ui59"></script>
+<script src="js/util.js?v=20260629-ui60"></script>
+<script src="js/official.js?v=20260629-ui60"></script>
+<script src="js/data.js?v=20260629-ui60"></script>
+<script src="js/nwa.js?v=20260629-ui60"></script>
+<script src="js/engine.js?v=20260629-ui60"></script>
+<script src="js/interventions.js?v=20260629-ui60"></script>
+<script src="js/charts.js?v=20260629-ui60"></script>
+<script src="js/app.js?v=20260629-ui60"></script>
 </body>
 </html>

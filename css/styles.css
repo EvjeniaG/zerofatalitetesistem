@@ -4555,3 +4555,57 @@ table.tbl.param-tbl tbody td,table.tbl.param-tbl thead th{font-size:var(--type-s
   .page-segment .profile-p-note{margin:0 14px 12px;padding:12px 14px}
   .page-segment .profile-p-note-lead,.page-segment .profile-p-list li{font-size:12px!important}
 }
+
+/* Disclaimer demo — dritare fillestare */
+.demo-disclaimer-scrim{
+  position:fixed;inset:0;z-index:1100;
+  background:rgba(8,22,39,.55);
+  backdrop-filter:blur(4px);
+}
+.demo-disclaimer{
+  position:fixed;inset:0;z-index:1101;
+  display:flex;align-items:center;justify-content:center;
+  padding:20px;
+  pointer-events:none;
+}
+.demo-disclaimer[hidden],.demo-disclaimer-scrim[hidden]{display:none!important}
+.demo-disclaimer-card{
+  pointer-events:auto;
+  width:min(440px,calc(100vw - 32px));
+  padding:28px 24px 24px;
+  border-radius:16px;
+  background:#fff;
+  border:1px solid #e2e8f0;
+  box-shadow:0 24px 48px rgba(8,22,39,.18);
+  text-align:center;
+}
+.demo-disclaimer-icon{
+  width:48px;height:48px;margin:0 auto 16px;
+  border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  background:#fff7ed;color:#ea580c;
+  border:1px solid #fed7aa;
+}
+.demo-disclaimer-icon svg{width:26px;height:26px}
+.demo-disclaimer-title{
+  margin:0 0 12px;
+  font-size:20px;font-weight:800;letter-spacing:-.02em;
+  color:var(--navy,#0b1f3a);
+}
+.demo-disclaimer-text{
+  margin:0 0 10px;
+  font-size:15px;line-height:1.55;color:#334155;
+}
+.demo-disclaimer-sub{
+  margin:0 0 22px;
+  font-size:14px;line-height:1.5;color:#64748b;
+}
+.demo-disclaimer-btn{
+  width:100%;min-height:46px;justify-content:center;font-weight:700;
+}
+body.demo-disclaimer-open{overflow:hidden}
+@media(max-width:480px){
+  .demo-disclaimer-card{padding:22px 18px 18px}
+  .demo-disclaimer-title{font-size:18px}
+  .demo-disclaimer-text{font-size:14px}
+}
