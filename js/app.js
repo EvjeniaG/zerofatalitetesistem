@@ -2,7 +2,7 @@
    app.js - SPA shell: navigation, hash router, module views.
    ============================================================= */
 
-const APP_BUILD='20260629-ui58';
+const APP_BUILD='20260629-ui59';
 
 function modelYearStats(y){
   const rows=ACCIDENTS.filter(a=>a.year===y);
@@ -50,7 +50,7 @@ function formatPHigh(p){
 }
 function pValueExplainNote(){
   return `<div class="profile-p-note" role="note">
-    <h6 class="profile-p-note-title">Si lexohet p (tej pritshmes)?</h6>
+    <h6 class="profile-p-note-title">Si lexohet p?</h6>
     <p class="profile-p-note-lead">Mat sa e rastësishme do të ishte të shihnim kaq aksidente me viktima, nëse ky segment do të sillete si mesatarja e rrjetit.</p>
     <ul class="profile-p-list">
       <li><span class="profile-p-k low">p i ulët (≈ 0%)</span> tepricë e qartë statistikore → <b>risk më i lartë</b></li>
@@ -80,7 +80,7 @@ function renderProfileCoefPanel(s,nwa,rfRows,ev){
             <tr><td class="coef-name">Pritshme</td><td class="num">${nwa.reactive.expected}</td></tr>
             <tr><td class="coef-name">Klasifikimi</td><td class="num">${NWA_REACTIVE_META[nwa.reactive.cls]?.label||nwa.reactive.cls}</td></tr>
             <tr><td class="coef-name">Metrika</td><td class="num">${nwa.reactive.metricUsed==='crash_rate'?'Shkalla (AADT)':'Densiteti'}</td></tr>
-            <tr><td class="coef-name">p (tej pritshmes)</td><td class="num">${formatPHigh(nwa.reactive.pHigh)}</td></tr>
+            <tr><td class="coef-name">p</td><td class="num">${formatPHigh(nwa.reactive.pHigh)}</td></tr>
             ${nwa.proactive.trafficFiltered?'<tr><td class="coef-name">Filtri trafikut</td><td class="num">p3→p2 (AADT i ulët)</td></tr>':''}
           </tbody></table></div>
         </div>
