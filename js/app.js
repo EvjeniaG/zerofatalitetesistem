@@ -2,7 +2,7 @@
    app.js - SPA shell: navigation, hash router, module views.
    ============================================================= */
 
-const APP_BUILD='20260629-ui57';
+const APP_BUILD='20260629-ui58';
 
 function modelYearStats(y){
   const rows=ACCIDENTS.filter(a=>a.year===y);
@@ -41,6 +41,62 @@ function phStat(val,label,period='model',hint=''){
 }
 function chartFootnote(text){
   return `<p class="chart-footnote">${text}</p>`;
+}
+function formatPHigh(p){
+  if(p==null||p===undefined||Number.isNaN(p)) return '-';
+  if(p<0.0001) return '<0.01%';
+  if(p<0.01) return (p*100).toFixed(2)+'%';
+  return round2(p*100)+'%';
+}
+function pValueExplainNote(){
+  return `<div class="profile-p-note" role="note">
+    <h6 class="profile-p-note-title">Si lexohet p (tej pritshmes)?</h6>
+    <p class="profile-p-note-lead">Mat sa e rastësishme do të ishte të shihnim kaq aksidente me viktima, nëse ky segment do të sillete si mesatarja e rrjetit.</p>
+    <ul class="profile-p-list">
+      <li><span class="profile-p-k low">p i ulët (≈ 0%)</span> tepricë e qartë statistikore → <b>risk më i lartë</b></li>
+      <li><span class="profile-p-k high">p i madh</span> aksidentet afër vlerës së pritshme → <b>më pak alarm</b></li>
+    </ul>
+  </div>`;
+}
+function renderProfileCoefPanel(s,nwa,rfRows,ev){
+  return `<div class="profile-coef-drawer" id="profileCoefDrawer" hidden>
+    <div class="card profile-coef-card">
+      <div class="card-pad profile-coef-intro">
+        <p class="prose muted">Niveli i riskut kombinon <b>gjendjen e rrugës</b> (koeficientët RF) me <b>historikun reaktiv</b> të aksidenteve me viktima · <b>${periodOf('nwa')}</b>.</p>
+      </div>
+      <div class="profile-coef-grid">
+        <div class="profile-coef-col">
+          <h6 class="sub-block-title">Gjendja e rrugës · ${nwa.proactive.score}%</h6>
+          <div class="tbl-wrap coef-tbl-wrap"><table class="tbl param-tbl param-tbl--stack param-tbl--pro"><thead><tr><th>Parametri</th><th class="num">Koef.</th><th class="num">Cilësia</th></tr></thead><tbody>
+            ${rfRows.map(r=>`<tr><td class="coef-name">${r.label}</td><td class="num" data-label="Koef.">${r.rf}</td><td class="num" data-label="Cilësia">${r.quality}%</td></tr>`).join('')}
+          </tbody></table></div>
+        </div>
+        <div class="profile-coef-col">
+          <h6 class="sub-block-title">Historiku reaktiv · ${periodOf('nwa')}</h6>
+          <div class="tbl-wrap coef-tbl-wrap"><table class="tbl param-tbl param-tbl--stack param-tbl--rea"><thead><tr><th>Treguesi</th><th class="num">Vlera</th></tr></thead><tbody>
+            <tr><td class="coef-name">Aksidente me viktima</td><td class="num"><b>${nwa.reactive.k}</b></td></tr>
+            <tr><td class="coef-name">Densiteti</td><td class="num">${nwa.reactive.crashDensity}</td></tr>
+            <tr><td class="coef-name">Shkalla</td><td class="num">${nwa.reactive.crashRate}</td></tr>
+            <tr><td class="coef-name">Pritshme</td><td class="num">${nwa.reactive.expected}</td></tr>
+            <tr><td class="coef-name">Klasifikimi</td><td class="num">${NWA_REACTIVE_META[nwa.reactive.cls]?.label||nwa.reactive.cls}</td></tr>
+            <tr><td class="coef-name">Metrika</td><td class="num">${nwa.reactive.metricUsed==='crash_rate'?'Shkalla (AADT)':'Densiteti'}</td></tr>
+            <tr><td class="coef-name">p (tej pritshmes)</td><td class="num">${formatPHigh(nwa.reactive.pHigh)}</td></tr>
+            ${nwa.proactive.trafficFiltered?'<tr><td class="coef-name">Filtri trafikut</td><td class="num">p3→p2 (AADT i ulët)</td></tr>':''}
+          </tbody></table></div>
+        </div>
+      </div>
+      ${pValueExplainNote()}
+      ${ev.n?`<div class="card-pad profile-evidence">
+        <h6 class="sub-block-title">Dëshmi nga historiku · ${periodOf('nwa')}</h6>
+        <div class="evidence-chips">
+          <span class="ev-chip">${ev.overSpeedPct}% mbi limit</span>
+          <span class="ev-chip">${ev.noLightPct}% natë pa dritë</span>
+          <span class="ev-chip">${ev.wetPct}% sipërfaqe e lagësht</span>
+          <span class="ev-chip">Ambulanca ~${ev.avgResp} min</span>
+        </div>
+      </div>`:''}
+    </div>
+  </div>`;
 }
 
 function pageZone(title, inner, cls=''){
@@ -919,43 +975,14 @@ function renderSegmentProfile(id){
         <span class="alert-k">Pikë e Zezë</span>
         <ul class="obs-list compact">${bsReasons.map(r=>`<li>${r}</li>`).join('')}</ul>
       </div>`:''}
-    </div>`,'zone-risk')}
-
-    ${pageZone('Koeficientët',`<div class="card profile-coef-card">
-      <div class="card-pad profile-coef-intro">
-        <p class="prose muted">Niveli i riskut kombinon <b>gjendjen e rrugës</b> (koeficientët RF) me <b>historikun reaktiv</b> të aksidenteve me viktima · <b>${periodOf('nwa')}</b>.</p>
+      <div class="profile-coef-toggle-wrap">
+        <button type="button" class="btn sm ghost profile-coef-toggle" id="profileCoefToggle" aria-expanded="false" aria-controls="profileCoefDrawer">
+          <span class="profile-coef-toggle-label">Shiko detajet e koeficientëve</span>
+          <svg class="profile-coef-toggle-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
       </div>
-      <div class="profile-coef-grid">
-        <div class="profile-coef-col">
-          <h6 class="sub-block-title">Gjendja e rrugës · ${nwa.proactive.score}%</h6>
-          <div class="tbl-wrap coef-tbl-wrap"><table class="tbl param-tbl param-tbl--stack param-tbl--pro"><thead><tr><th>Parametri</th><th class="num">Koef.</th><th class="num">Cilësia</th></tr></thead><tbody>
-            ${rfRows.map(r=>`<tr><td class="coef-name">${r.label}</td><td class="num" data-label="Koef.">${r.rf}</td><td class="num" data-label="Cilësia">${r.quality}%</td></tr>`).join('')}
-          </tbody></table></div>
-        </div>
-        <div class="profile-coef-col">
-          <h6 class="sub-block-title">Historiku reaktiv · ${periodOf('nwa')}</h6>
-          <div class="tbl-wrap coef-tbl-wrap"><table class="tbl param-tbl param-tbl--stack param-tbl--rea"><thead><tr><th>Treguesi</th><th class="num">Vlera</th></tr></thead><tbody>
-            <tr><td class="coef-name">Aksidente me viktima</td><td class="num"><b>${nwa.reactive.k}</b></td></tr>
-            <tr><td class="coef-name">Densiteti</td><td class="num">${nwa.reactive.crashDensity}</td></tr>
-            <tr><td class="coef-name">Shkalla</td><td class="num">${nwa.reactive.crashRate}</td></tr>
-            <tr><td class="coef-name">Pritshme</td><td class="num">${nwa.reactive.expected}</td></tr>
-            <tr><td class="coef-name">Klasifikimi</td><td class="num">${NWA_REACTIVE_META[nwa.reactive.cls]?.label||nwa.reactive.cls}</td></tr>
-            <tr><td class="coef-name">Metrika</td><td class="num">${nwa.reactive.metricUsed==='crash_rate'?'Shkalla (AADT)':'Densiteti'}</td></tr>
-            <tr><td class="coef-name">p (i lartë)</td><td class="num">${nwa.reactive.pHigh??'-'}%</td></tr>
-            ${nwa.proactive.trafficFiltered?'<tr><td class="coef-name">Filtri trafikut</td><td class="num">p3→p2 (AADT i ulët)</td></tr>':''}
-          </tbody></table></div>
-        </div>
-      </div>
-      ${ev.n?`<div class="card-pad profile-evidence">
-        <h6 class="sub-block-title">Dëshmi nga historiku · ${periodOf('nwa')}</h6>
-        <div class="evidence-chips">
-          <span class="ev-chip">${ev.overSpeedPct}% mbi limit</span>
-          <span class="ev-chip">${ev.noLightPct}% natë pa dritë</span>
-          <span class="ev-chip">${ev.wetPct}% sipërfaqe e lagësht</span>
-          <span class="ev-chip">Ambulanca ~${ev.avgResp} min</span>
-        </div>
-      </div>`:''}
-    </div>`,'zone-coef')}
+    </div>
+    ${renderProfileCoefPanel(s,nwa,rfRows,ev)}`,'zone-risk')}
 
     ${pageZone('Konteksti',`<div class="profile-row-2">
       <div class="card">
@@ -978,6 +1005,18 @@ function renderSegmentProfile(id){
     <div class="page-actions flex-c gap-12"><a class="btn primary" href="#/reports">Raport</a><a class="btn ghost" href="#/interventions">Ndërhyrjet</a></div>
   </div>`;
   setTimeout(()=>{
+    const coefToggle=document.getElementById('profileCoefToggle');
+    const coefDrawer=document.getElementById('profileCoefDrawer');
+    if(coefToggle&&coefDrawer){
+      coefToggle.addEventListener('click',()=>{
+        const open=coefDrawer.hidden;
+        coefDrawer.hidden=!open;
+        coefToggle.setAttribute('aria-expanded',open?'true':'false');
+        coefToggle.classList.toggle('is-open',open);
+        coefToggle.querySelector('.profile-coef-toggle-label').textContent=open?'Fshih detajet e koeficientëve':'Shiko detajet e koeficientëve';
+        if(open) setTimeout(()=>coefDrawer.scrollIntoView({behavior:'smooth',block:'start'}),80);
+      });
+    }
     _map=baseMap('mapMain',[s.lat,s.lng],14);
     s.accidents.forEach(a=>L.circleMarker([a.lat,a.lng],{radius:a.fatalities?7:4,color:sevColor(a.severity),weight:a.fatalities?2:0,fillColor:sevColor(a.severity),fillOpacity:.7}).addTo(_map).bindTooltip(`${a.id} · ${a.severityLabel}`));
     L.circle([s.lat,s.lng],{radius:s.lengthKm*500,color:nwaColor(nwa),weight:1.5,fillOpacity:.05,dashArray:'5 5'}).addTo(_map);
