@@ -2,7 +2,7 @@
    app.js - SPA shell: navigation, hash router, module views.
    ============================================================= */
 
-const APP_BUILD='20260629-ui60';
+const APP_BUILD='20260629-ui61';
 
 function modelYearStats(y){
   const rows=ACCIDENTS.filter(a=>a.year===y);
@@ -1546,16 +1546,22 @@ function initChartTooltips(){
 }
 
 /* demo disclaimer — shfaqet kur hapet faqja */
+const DEMO_DISCLAIMER_KEY='demo-disclaimer-accepted';
+
 function initDemoDisclaimer(){
   const dlg=document.getElementById('demoDisclaimer');
   const scrim=document.getElementById('demoDisclaimerScrim');
   const btn=document.getElementById('demoDisclaimerBtn');
   if(!dlg||!scrim||!btn) return;
+  try{
+    if(localStorage.getItem(DEMO_DISCLAIMER_KEY)==='1') return;
+  }catch(e){}
   const close=()=>{
     dlg.hidden=true;
     scrim.hidden=true;
     scrim.setAttribute('aria-hidden','true');
     document.body.classList.remove('demo-disclaimer-open');
+    try{ localStorage.setItem(DEMO_DISCLAIMER_KEY,'1'); }catch(e){}
   };
   dlg.hidden=false;
   scrim.hidden=false;
